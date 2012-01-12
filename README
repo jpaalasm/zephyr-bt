@@ -1,0 +1,2 @@
+pyzephyr is a Python library for interfacing with a Zephyr BioHarness device
+over a serial Bluetooth connection.
