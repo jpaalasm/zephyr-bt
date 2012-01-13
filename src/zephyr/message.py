@@ -13,12 +13,25 @@ def crc_8_digest(bytes):
     return crc
 
 
+def create_message_frame(message_id, payload):
+    dlc = len(payload)
+    assert 0 <= dlc <= 128
+    
+    crc_byte = crc_8_digest(payload)
+    
+    message_bytes = [0x02, message_id, dlc] + payload + [crc_byte, 0x03]
+    
+    message_frame = "".join(chr(byte) for byte in message_bytes)
+    return message_frame
+    
+
+
 class MessageFrame:
-    def __init__(self, message_type):
-        self.type = message_type
+    def __init__(self, message_id):
+        self.message_id = message_id
         self.length = None
         self.eom = None
-        self.bytes = []
+        self.payload = []
     
     def set_length(self, length):
         assert self.length is None
@@ -29,13 +42,13 @@ class MessageFrame:
         self.eom = eom
     
     def byte_accepted(self):
-        return len(self.bytes) < self.length
+        return len(self.payload) < self.length
     
     def handle_byte(self, byte):
-        self.bytes.append(byte)
+        self.payload.append(byte)
     
     def get_crc(self):
-        calculated_crc = crc_8_digest(self.bytes)
+        calculated_crc = crc_8_digest(self.payload)
         return calculated_crc
 
 
