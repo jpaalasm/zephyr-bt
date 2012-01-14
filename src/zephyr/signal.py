@@ -11,7 +11,7 @@ def unpack_bit_packed_values(data_bytes, value_nbits):
         value_start_byte = value_start_bit / 8
         bit_offset_from_start_byte = value_start_bit % 8
         
-        unpacked_value = data_bytes[value_start_byte] + data_bytes[value_start_byte + 1] * 255
+        unpacked_value = data_bytes[value_start_byte] + (data_bytes[value_start_byte + 1] << 8)
         unpacked_value >>= bit_offset_from_start_byte
         unpacked_value &= value_bit_mask
         
