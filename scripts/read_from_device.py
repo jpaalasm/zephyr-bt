@@ -6,9 +6,6 @@ import zephyr.connection
 import zephyr.signal
 
 
-def callback(message):
-    print "Message: type %02x, payload %s, eom %s" % (message.message_id, message.payload, message.eom)
-
 def main():
     signal_receiver = zephyr.signal.SignalReceiver()
     
