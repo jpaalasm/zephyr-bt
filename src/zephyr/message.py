@@ -1,8 +1,8 @@
 
-def crc_8_digest(bytes):
+def crc_8_digest(values):
     crc = 0
     
-    for byte in bytes:
+    for byte in values:
         crc ^= byte
         for i in range(8):
             if crc & 1:
