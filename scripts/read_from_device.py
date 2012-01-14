@@ -14,7 +14,7 @@ def main():
     #ser = serial.Serial(23, timeout=0.1) #Windows (Joonas' machine)
     
     signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
-    signal_receiver = zephyr.signal.SignalMessageParser(signal_collector.handle_signal)
+    signal_receiver = zephyr.signal.SignalMessageParser(signal_collector.handle_packet)
     connection = zephyr.connection.Connection(ser, signal_receiver.handle_message)
     
     connection.send_message(0x15, [1])

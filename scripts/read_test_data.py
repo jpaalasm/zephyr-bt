@@ -10,7 +10,7 @@ def main():
     input_file = open("../test_data/120-second-bt-stream.dat", "rb")
     
     signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
-    signal_receiver = zephyr.signal.SignalMessageParser(signal_collector.handle_signal)
+    signal_receiver = zephyr.signal.SignalMessageParser(signal_collector.handle_packet)
     connection = zephyr.connection.Connection(input_file, signal_receiver.handle_message)
     
     while connection.read_and_handle_bytes(1):

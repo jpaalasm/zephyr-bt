@@ -3,6 +3,11 @@ import time
 import datetime
 import collections
 
+
+SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
+SignalPacket = collections.namedtuple("SignalPacket", ["type", "timestamp", "signal_values"])
+
+
 def unpack_bit_packed_values(data_bytes, value_nbits, twos_complement):
     total_bit_count = len(data_bytes) * 8
     value_count = total_bit_count / value_nbits
@@ -69,7 +74,8 @@ class SignalMessageParser:
         
         assert len(signal_values) == 18
         
-        self.callback("rr", signal_values, message_timestamp)
+        signal_packet = SignalPacket("rr", message_timestamp, signal_values)
+        self.callback(signal_packet)
     
     def handle_accelerometer_payload(self, payload):
         assert len(payload) == 84
@@ -92,7 +98,8 @@ class SignalMessageParser:
         
         acceleration_values = zip(x_values, y_values, z_values)
         
-        self.callback("acceleration", acceleration_values, message_timestamp)
+        signal_packet = SignalPacket("acceleration", message_timestamp, acceleration_values)
+        self.callback(signal_packet)
     
     def handle_breathing_payload(self, payload):
         assert len(payload) == 32
@@ -107,9 +114,8 @@ class SignalMessageParser:
         
         signal_values = [value - 512 for value in signal_values]
         
-        self.callback("breathing", signal_values, message_timestamp)
-
-SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
+        signal_packet = SignalPacket("breathing", message_timestamp, signal_values)
+        self.callback(signal_packet)
 
 class SignalCollector:
     def __init__(self):
@@ -120,18 +126,18 @@ class SignalCollector:
         self.signal_streams = {}
         self.estimated_clock_difference = None
     
-    def handle_signal(self, signal_type, signal_values, message_timestamp):
-        if signal_type not in self.signal_streams:
-            samplerate = self.samplerates.get(signal_type)
+    def handle_packet(self, signal_packet):
+        if signal_packet.type not in self.signal_streams:
+            samplerate = self.samplerates.get(signal_packet.type)
             
             if samplerate is not None:
                 if self.estimated_clock_difference is None:
-                    temporal_message_length = len(signal_values) / samplerate
+                    temporal_message_length = len(signal_packet.signal_values) / samplerate
                     local_message_start_time = time.time() - temporal_message_length
-                    self.estimated_clock_difference = message_timestamp - local_message_start_time
+                    self.estimated_clock_difference = signal_packet.timestamp - local_message_start_time
                 
-                signal_stream = SignalStream(message_timestamp, samplerate, signal_values)
-                self.signal_streams[signal_type] = signal_stream
+                signal_stream = SignalStream(signal_packet.timestamp, samplerate, signal_packet.signal_values)
+                self.signal_streams[signal_packet.type] = signal_stream
         else:
-            signal_stream = self.signal_streams[signal_type]
-            signal_stream.signal_values.extend(signal_values)
+            signal_stream = self.signal_streams[signal_packet.type]
+            signal_stream.signal_values.extend(signal_packet.signal_values)
