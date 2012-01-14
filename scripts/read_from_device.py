@@ -4,15 +4,16 @@ import serial
 import zephyr.message
 import zephyr.connection
 import zephyr.signal
+import zephyr.rr_event
 
-def dummy_handler(*args):
-    print "Got:", args
+import plots
 
 def main():
-    signal_receiver = zephyr.signal.SignalMessageParser(dummy_handler)
-    
     ser = serial.Serial("/dev/cu.BHBHT001931-iSerialPort1", timeout=0.1) #OS X (Dave's machine)
     #ser = serial.Serial(23, timeout=0.1) #Windows (Joonas' machine)
+    
+    signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
+    signal_receiver = zephyr.signal.SignalMessageParser(signal_collector.handle_signal)
     connection = zephyr.connection.Connection(ser, signal_receiver.handle_message)
     
     connection.send_message(0x15, [1])
@@ -20,8 +21,12 @@ def main():
     connection.send_message(0x19, [1])
     connection.send_message(0x1E, [1])
     
-    while True:
+    start_time = time.time()
+    
+    while time.time() < start_time + 30:
         connection.read_and_handle_bytes(1)
+    
+    plots.visualize_measurements(signal_collector)
 
 
 if __name__ == "__main__":

@@ -20,9 +20,9 @@ class RREventParser:
             self.latest_value_sign = value_sign
 
 class SignalCollectorWithRRProcessing(zephyr.signal.SignalCollector):
-    def __init__(self, rr_samplerate):
+    def __init__(self):
         zephyr.signal.SignalCollector.__init__(self)
-        self.rr_event_parser = RREventParser(rr_samplerate)
+        self.rr_event_parser = RREventParser(self.samplerates["rr"])
         self.rr_events = []
     
     def handle_signal(self, signal_type, signal_values, message_timestamp):

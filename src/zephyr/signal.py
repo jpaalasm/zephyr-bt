@@ -109,16 +109,29 @@ class SignalMessageParser:
         
         self.callback("breathing", signal_values, message_timestamp)
 
-SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "signal_values"])
+SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
 
 class SignalCollector:
     def __init__(self):
+        self.samplerates = {"rr": 18.0,
+                            "breathing": 18.0,
+                            "acceleration": 50.0}
+        
         self.signal_streams = {}
+        self.estimated_clock_difference = None
     
     def handle_signal(self, signal_type, signal_values, message_timestamp):
         if signal_type not in self.signal_streams:
-            signal_stream = SignalStream(message_timestamp, signal_values)
-            self.signal_streams[signal_type] = signal_stream
+            samplerate = self.samplerates.get(signal_type)
+            
+            if samplerate is not None:
+                if self.estimated_clock_difference is None:
+                    temporal_message_length = len(signal_values) / samplerate
+                    local_message_start_time = time.time() - temporal_message_length
+                    self.estimated_clock_difference = message_timestamp - local_message_start_time
+                
+                signal_stream = SignalStream(message_timestamp, samplerate, signal_values)
+                self.signal_streams[signal_type] = signal_stream
         else:
             signal_stream = self.signal_streams[signal_type]
             signal_stream.signal_values.extend(signal_values)
