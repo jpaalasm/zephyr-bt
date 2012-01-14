@@ -5,9 +5,11 @@ import zephyr.message
 import zephyr.connection
 import zephyr.signal
 
+def dummy_handler(*args):
+    print "Got:", args
 
 def main():
-    signal_receiver = zephyr.signal.SignalReceiver()
+    signal_receiver = zephyr.signal.SignalMessageParser(dummy_handler)
     
     ser = serial.Serial("/dev/cu.BHBHT001931-iSerialPort1", timeout=0.1) #OS X (Dave's machine)
     #ser = serial.Serial(23, timeout=0.1) #Windows (Joonas' machine)
