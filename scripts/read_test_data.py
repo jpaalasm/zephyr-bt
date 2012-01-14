@@ -15,6 +15,10 @@ def main():
     
     while connection.read_and_handle_bytes(1):
         pass
+    
+    import pylab
+    pylab.plot(signal_receiver.breathing_values, ",")
+    pylab.show()
 
 
 if __name__ == "__main__":
