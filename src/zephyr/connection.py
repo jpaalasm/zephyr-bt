@@ -14,3 +14,6 @@ class Connection:
     def read_and_handle_bytes(self, num_bytes):
         data_string = self.ser.read(num_bytes)
         self.protocol.parse_data(data_string)
+        
+        nbytes_read = len(data_string)
+        return nbytes_read

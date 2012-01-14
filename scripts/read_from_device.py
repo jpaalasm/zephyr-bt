@@ -3,32 +3,14 @@ import serial
 
 import zephyr.message
 import zephyr.connection
-
-
-class SignalReceiver:
-    def __init__(self):
-        pass
-    
-    def handle_message(self, message):
-        print "Message: %02x" % message.message_id
-        
-        if message.message_id == 0x21:
-            self.handle_breathing_payload(message.payload)
-    
-    def handle_breathing_payload(self, payload):
-        assert len(payload) == 32
-        
-        header = payload[:9]
-        signal_bytes = payload[9:]
-        
-        print "Breathing data:", payload
+import zephyr.signal
 
 
 def callback(message):
     print "Message: type %02x, payload %s, eom %s" % (message.message_id, message.payload, message.eom)
 
 def main():
-    signal_receiver = SignalReceiver()
+    signal_receiver = zephyr.signal.SignalReceiver()
     
     ser = serial.Serial(23, timeout=0.1)
     connection = zephyr.connection.Connection(ser, signal_receiver.handle_message)
