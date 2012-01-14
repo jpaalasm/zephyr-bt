@@ -22,23 +22,62 @@ def unpack_bit_packed_values(data_bytes, value_nbits):
 class SignalReceiver:
     def __init__(self):
         self.breathing_values = []
+        self.rr_values = []
+        self.acceleration_values = []
+        
+        self.message_handlers = {0x21: self.handle_breathing_payload,
+                                 0x24: self.handle_rr_payload,
+                                 0x25: self.handle_accelerometer_payload}
     
     def handle_message(self, message):
-        print "Message: %02x" % message.message_id
+        message_handler = self.message_handlers.get(message.message_id)
         
-        if message.message_id == 0x21:
-            self.handle_breathing_payload(message.payload)
+        if message_handler is not None:
+            message_handler(message.payload)
+    
+    def handle_rr_payload(self, payload):
+        assert len(payload) == 45
+        
+        data_bytes = payload[9:]
+        
+        signal_values = unpack_bit_packed_values(data_bytes, 16)
+        
+        maximum_value = 2**16
+        value_boundary = 2**15
+        
+        signal_values = [(value if value < value_boundary else value - maximum_value)
+                         for value in signal_values]
+        
+        assert len(signal_values) == 18
+        
+        self.rr_values.extend(signal_values)
+    
+    def handle_accelerometer_payload(self, payload):
+        assert len(payload) == 84
+        
+        data_bytes = payload[9:]
+        
+        signal_values = unpack_bit_packed_values(data_bytes, 10)
+        assert len(signal_values) == 60
+        
+        one_g_value = (83 / 4.0)
+        
+        signal_values = [(value - 512) / one_g_value for value in signal_values]
+        
+        x_values = signal_values[0::3]
+        y_values = signal_values[1::3]
+        z_values = signal_values[2::3]
+        
+        self.acceleration_values.extend(zip(x_values, y_values, z_values))
     
     def handle_breathing_payload(self, payload):
         assert len(payload) == 32
         
-        header = payload[:9]
         data_bytes = payload[9:]
         
         signal_values = unpack_bit_packed_values(data_bytes, 10)
-        
         assert len(signal_values) == 18
         
-        self.breathing_values.extend(signal_values)
+        signal_values = [value - 512 for value in signal_values]
         
-        print "Breathing signal:", signal_values
+        self.breathing_values.extend(signal_values)
