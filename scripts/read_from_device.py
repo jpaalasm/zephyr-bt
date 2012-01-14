@@ -9,7 +9,8 @@ import zephyr.signal
 def main():
     signal_receiver = zephyr.signal.SignalReceiver()
     
-    ser = serial.Serial(23, timeout=0.1)
+    ser = serial.Serial("/dev/cu.BHBHT001931-iSerialPort1", timeout=0.1) #OS X (Dave's machine)
+    #ser = serial.Serial(23, timeout=0.1) #Windows (Joonas' machine)
     connection = zephyr.connection.Connection(ser, signal_receiver.handle_message)
     
     connection.send_message(0x15, [1])
