@@ -6,8 +6,7 @@ import zephyr.message
 import zephyr.connection
 import zephyr.signal
 import zephyr.rr_event
-
-import plots
+import zephyr.testing
 
 def main():
     ser = serial.Serial("/dev/cu.BHBHT001931-iSerialPort1", timeout=0.1) #OS X (Dave's machine)
@@ -27,7 +26,7 @@ def main():
     while time.time() < start_time + 30:
         connection.read_and_handle_bytes(1)
     
-    plots.visualize_measurements(signal_collector)
+    zephyr.testing.visualize_measurements(signal_collector)
 
 
 if __name__ == "__main__":

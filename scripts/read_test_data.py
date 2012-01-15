@@ -3,8 +3,7 @@ import zephyr.message
 import zephyr.connection
 import zephyr.signal
 import zephyr.rr_event
-
-import plots
+import zephyr.testing
 
 def main():
     input_file = open("../test_data/120-second-bt-stream.dat", "rb")
@@ -16,7 +15,7 @@ def main():
     while connection.read_and_handle_bytes(1):
         pass
     
-    plots.visualize_measurements(signal_collector)
+    zephyr.testing.visualize_measurements(signal_collector)
 
 
 if __name__ == "__main__":
