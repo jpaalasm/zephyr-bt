@@ -22,13 +22,16 @@ class RREventParser:
 class SignalCollectorWithRRProcessing(zephyr.signal.SignalCollector):
     def __init__(self):
         zephyr.signal.SignalCollector.__init__(self)
-        self.rr_event_parser = RREventParser(self.samplerates["rr"])
+        self.rr_event_parser = None
         self.rr_events = []
     
     def handle_packet(self, signal_packet):
         zephyr.signal.SignalCollector.handle_packet(self, signal_packet)
         
         if signal_packet.type == "rr":
+            if self.rr_event_parser is None:
+                self.rr_event_parser = RREventParser(signal_packet.samplerate)
+            
             rr_signal_start_timestamp = self.signal_streams["rr"].start_timestamp
             for relative_rr_event_timestamp, rr_event_value in self.rr_event_parser.handle_values(signal_packet.signal_values):
                 rr_event_timestamp = relative_rr_event_timestamp + rr_signal_start_timestamp

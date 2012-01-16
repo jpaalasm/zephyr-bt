@@ -5,7 +5,7 @@ import collections
 
 
 SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
-SignalPacket = collections.namedtuple("SignalPacket", ["type", "timestamp", "signal_values"])
+SignalPacket = collections.namedtuple("SignalPacket", ["type", "timestamp", "samplerate", "signal_values"])
 
 
 def unpack_bit_packed_values(data_bytes, value_nbits, twos_complement):
@@ -38,12 +38,12 @@ class SignalMessageParser:
     def __init__(self, callback):
         self.callback = callback
         
-        self.signal_types = {0x21: (self.handle_breathing_payload, "breathing"),
-                             0x22: (self.handle_ecg_payload, "ecg"),
-                             0x24: (self.handle_rr_payload, "rr"),
-                             0x25: (self.handle_accelerometer_payload, "acceleration")}
+        self.signal_types = {0x21: (self.handle_10_bit_signal, "breathing", 18.0),
+                             0x22: (self.handle_10_bit_signal, "ecg", 250.0),
+                             0x24: (self.handle_rr_payload, "rr", 18.0),
+                             0x25: (self.handle_accelerometer_payload, "acceleration", 50.0)}
     
-    def parse_header(self, header_bytes):
+    def parse_header_timestamp(self, header_bytes):
         year = header_bytes[1] + (header_bytes[2] << 8)
         month = header_bytes[3]
         day = header_bytes[4]
@@ -57,78 +57,58 @@ class SignalMessageParser:
     
     def handle_message(self, message):
         if message.message_id in self.signal_types:
-            message_handler, signal_code = self.signal_types[message.message_id]
+            message_handler, signal_code, samplerate = self.signal_types[message.message_id]
             
             header_bytes = message.payload[:9]
             signal_bytes = message.payload[9:]
             
-            message_timestamp = self.parse_header(header_bytes)
+            message_timestamp = self.parse_header_timestamp(header_bytes)
             
             signal_values = message_handler(signal_bytes)
             
-            signal_packet = SignalPacket(signal_code, message_timestamp, signal_values)
+            signal_packet = SignalPacket(signal_code, message_timestamp, samplerate, signal_values)
             self.callback(signal_packet)
     
+    def handle_10_bit_signal(self, signal_bytes):
+        signal_values = unpack_bit_packed_values(signal_bytes, 10, False)
+        signal_values = [value - 512 for value in signal_values]
+        return signal_values
+    
     def handle_rr_payload(self, signal_bytes):
-        assert len(signal_bytes) == 36
-        
         signal_values = unpack_bit_packed_values(signal_bytes, 16, True)
         signal_values = [value / 1000.0 for value in signal_values]
-        assert len(signal_values) == 18
         
         return signal_values
     
     def handle_accelerometer_payload(self, signal_bytes):
-        assert len(signal_bytes) == 75
+        interleaved_signal_values = self.handle_10_bit_signal(signal_bytes)
         
-        one_g_value = 83 / 4.0
-        
-        interleaved_signal_values = unpack_bit_packed_values(signal_bytes, 10, False)
-        assert len(interleaved_signal_values) == 60
-        interleaved_signal_values = [(value - 512) / one_g_value for value in interleaved_signal_values]
+        # 83 correspond to one g in the 14-bit acceleration
+        # signal, and this of 1/4 of that
+        one_g_value = 20.75
+        interleaved_signal_values = [value / one_g_value for value in interleaved_signal_values]
         
         signal_values = zip(interleaved_signal_values[0::3], interleaved_signal_values[1::3], interleaved_signal_values[2::3])
-        
         return signal_values
-    
-    def handle_breathing_payload(self, signal_bytes):
-        assert len(signal_bytes) == 23
-        
-        signal_values = unpack_bit_packed_values(signal_bytes, 10, False)
-        assert len(signal_values) == 18
-        signal_values = [value - 512 for value in signal_values]
-        return signal_values
-    
-    def handle_ecg_payload(self, signal_bytes):
-        assert len(signal_bytes) == 79
-        
-        signal_values = unpack_bit_packed_values(signal_bytes, 10, False)
-        assert len(signal_values) == 63
-        signal_values = [value - 512 for value in signal_values]
-        return signal_values
+
 
 class SignalCollector:
     def __init__(self):
-        self.samplerates = {"rr": 18.0,
-                            "breathing": 18.0,
-                            "acceleration": 50.0,
-                            "ecg": 250.}
-        
         self.signal_streams = {}
         self.estimated_clock_difference = None
     
+    def initialize_stream(self, signal_packet):
+        if self.estimated_clock_difference is None:
+            temporal_message_length = len(signal_packet.signal_values) / signal_packet.samplerate
+            local_message_start_time = time.time() - temporal_message_length
+            self.estimated_clock_difference = signal_packet.timestamp - local_message_start_time
+        
+        signal_stream = SignalStream(signal_packet.timestamp, signal_packet.samplerate, [])
+        self.signal_streams[signal_packet.type] = signal_stream
+    
     def handle_packet(self, signal_packet):
         if signal_packet.type not in self.signal_streams:
-            samplerate = self.samplerates.get(signal_packet.type)
-            
-            if samplerate is not None:
-                if self.estimated_clock_difference is None:
-                    temporal_message_length = len(signal_packet.signal_values) / samplerate
-                    local_message_start_time = time.time() - temporal_message_length
-                    self.estimated_clock_difference = signal_packet.timestamp - local_message_start_time
-                
-                signal_stream = SignalStream(signal_packet.timestamp, samplerate, signal_packet.signal_values)
-                self.signal_streams[signal_packet.type] = signal_stream
-        else:
-            signal_stream = self.signal_streams[signal_packet.type]
-            signal_stream.signal_values.extend(signal_packet.signal_values)
+            self.initialize_stream(signal_packet)
+        
+        signal_stream = self.signal_streams[signal_packet.type]
+        signal_stream.signal_values.extend(signal_packet.signal_values)
