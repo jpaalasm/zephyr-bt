@@ -1,2 +1,2 @@
-pyzephyr is a Python library for interfacing with a Zephyr BioHarness™ device
+pyzephyr is a Python library for interfacing with a Zephyr BioHarness(TM) device
 over a serial Bluetooth connection.
