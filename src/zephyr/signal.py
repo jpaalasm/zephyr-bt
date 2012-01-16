@@ -38,9 +38,10 @@ class SignalMessageParser:
     def __init__(self, callback):
         self.callback = callback
         
-        self.signal_types = {0x21: self.handle_breathing_payload,
-                             0x24: self.handle_rr_payload,
-                             0x25: self.handle_accelerometer_payload}
+        self.signal_types = {0x21: (self.handle_breathing_payload, "breathing"),
+                             0x22: (self.handle_ecg_payload, "ecg"),
+                             0x24: (self.handle_rr_payload, "rr"),
+                             0x25: (self.handle_accelerometer_payload, "acceleration")}
     
     def parse_header(self, header_bytes):
         year = header_bytes[1] + (header_bytes[2] << 8)
@@ -55,73 +56,63 @@ class SignalMessageParser:
         return timestamp
     
     def handle_message(self, message):
-        message_handler = self.signal_types.get(message.message_id)
-        
-        if message_handler is not None:
-            message_handler(message.payload)
+        if message.message_id in self.signal_types:
+            message_handler, signal_code = self.signal_types[message.message_id]
+            
+            header_bytes = message.payload[:9]
+            signal_bytes = message.payload[9:]
+            
+            message_timestamp = self.parse_header(header_bytes)
+            
+            signal_values = message_handler(signal_bytes)
+            
+            signal_packet = SignalPacket(signal_code, message_timestamp, signal_values)
+            self.callback(signal_packet)
     
-    def handle_rr_payload(self, payload):
-        assert len(payload) == 45
+    def handle_rr_payload(self, signal_bytes):
+        assert len(signal_bytes) == 36
         
-        header_bytes = payload[:9]
-        data_bytes = payload[9:]
-        
-        message_timestamp = self.parse_header(header_bytes)
-        
-        signal_values = unpack_bit_packed_values(data_bytes, 16, True)
-        
+        signal_values = unpack_bit_packed_values(signal_bytes, 16, True)
         signal_values = [value / 1000.0 for value in signal_values]
-        
         assert len(signal_values) == 18
         
-        signal_packet = SignalPacket("rr", message_timestamp, signal_values)
-        self.callback(signal_packet)
+        return signal_values
     
-    def handle_accelerometer_payload(self, payload):
-        assert len(payload) == 84
-        
-        header_bytes = payload[:9]
-        data_bytes = payload[9:]
-        
-        message_timestamp = self.parse_header(header_bytes)
-        
-        signal_values = unpack_bit_packed_values(data_bytes, 10, False)
-        assert len(signal_values) == 60
+    def handle_accelerometer_payload(self, signal_bytes):
+        assert len(signal_bytes) == 75
         
         one_g_value = 83 / 4.0
         
-        signal_values = [(value - 512) / one_g_value for value in signal_values]
+        interleaved_signal_values = unpack_bit_packed_values(signal_bytes, 10, False)
+        assert len(interleaved_signal_values) == 60
+        interleaved_signal_values = [(value - 512) / one_g_value for value in interleaved_signal_values]
         
-        x_values = signal_values[0::3]
-        y_values = signal_values[1::3]
-        z_values = signal_values[2::3]
+        signal_values = zip(interleaved_signal_values[0::3], interleaved_signal_values[1::3], interleaved_signal_values[2::3])
         
-        acceleration_values = zip(x_values, y_values, z_values)
-        
-        signal_packet = SignalPacket("acceleration", message_timestamp, acceleration_values)
-        self.callback(signal_packet)
+        return signal_values
     
-    def handle_breathing_payload(self, payload):
-        assert len(payload) == 32
+    def handle_breathing_payload(self, signal_bytes):
+        assert len(signal_bytes) == 23
         
-        header_bytes = payload[:9]
-        data_bytes = payload[9:]
-        
-        message_timestamp = self.parse_header(header_bytes)
-        
-        signal_values = unpack_bit_packed_values(data_bytes, 10, False)
+        signal_values = unpack_bit_packed_values(signal_bytes, 10, False)
         assert len(signal_values) == 18
-        
         signal_values = [value - 512 for value in signal_values]
+        return signal_values
+    
+    def handle_ecg_payload(self, signal_bytes):
+        assert len(signal_bytes) == 79
         
-        signal_packet = SignalPacket("breathing", message_timestamp, signal_values)
-        self.callback(signal_packet)
+        signal_values = unpack_bit_packed_values(signal_bytes, 10, False)
+        assert len(signal_values) == 63
+        signal_values = [value - 512 for value in signal_values]
+        return signal_values
 
 class SignalCollector:
     def __init__(self):
         self.samplerates = {"rr": 18.0,
                             "breathing": 18.0,
-                            "acceleration": 50.0}
+                            "acceleration": 50.0,
+                            "ecg": 250.}
         
         self.signal_streams = {}
         self.estimated_clock_difference = None

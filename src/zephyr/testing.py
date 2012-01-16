@@ -37,10 +37,12 @@ def visualize_measurements(signal_collector):
     
     acceleration_start_timestamp, acceleration_samplerate, acceleration_signal = signal_collector.signal_streams["acceleration"]
     breathing_start_timestamp, breathing_samplerate, breathing_signal = signal_collector.signal_streams["breathing"]
+    ecg_start_timestamp, ecg_samplerate, ecg_signal = signal_collector.signal_streams["ecg"]
     
-    ax1 = pylab.subplot(3,1,1)
-    ax3 = pylab.subplot(3,1,2,sharex=ax1)
-    ax4 = pylab.subplot(3,1,3,sharex=ax1)
+    ax1 = pylab.subplot(4,1,1)
+    ax2 = pylab.subplot(4,1,2,sharex=ax1)
+    ax3 = pylab.subplot(4,1,3,sharex=ax1)
+    ax4 = pylab.subplot(4,1,4,sharex=ax1)
     
     breathing_x_values = numpy.arange(len(breathing_signal), dtype=float)
     breathing_x_values /= breathing_samplerate
@@ -50,7 +52,12 @@ def visualize_measurements(signal_collector):
     acceleration_x_values /= acceleration_samplerate
     acceleration_x_values += acceleration_start_timestamp
     
+    ecg_x_values = numpy.arange(len(ecg_signal), dtype=float)
+    ecg_x_values /= ecg_samplerate
+    ecg_x_values += ecg_start_timestamp
+    
     ax1.plot(breathing_x_values, breathing_signal)
+    ax2.plot(ecg_x_values, ecg_signal)
     ax3.plot(acceleration_x_values, numpy.array(acceleration_signal))
     ax4.plot(rr_events_array[:, 0], rr_events_array[:, 1], "+")
     
