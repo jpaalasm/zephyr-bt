@@ -4,6 +4,7 @@ import time
 
 import zephyr.message
 import zephyr.connection
+import json
 
 def main():
     ser = serial.Serial(23)
@@ -14,18 +15,33 @@ def main():
     connection.send_message(0x19, [1])
     connection.send_message(0x1E, [1])
     
-    parts = []
-    
     start_time = time.time()
     
-    while time.time() < start_time + 120:
-        chunk = ser.read(100)
-        print repr(chunk)
-        parts.append(chunk)
+    recording_time = 120.0
     
-    received_data = "".join(parts)
+    read_bytes_list = []
+    chunks_timing = []
     
-    file("../test_data/120-second-bt-stream.dat", "wb").write(received_data)
+    while True:
+        time_before = time.time()
+        byte = ser.read(1)
+        delay = time.time() - time_before
+        
+        relative_previous_chunk_time = time_before - start_time
+        
+        if delay > 0.01 and len(read_bytes_list):
+            chunks_timing.append((relative_previous_chunk_time, len(read_bytes_list)))
+            print chunks_timing[-1]
+        
+        if relative_previous_chunk_time > recording_time:
+            break
+        
+        read_bytes_list.append(byte)
+    
+    read_bytes = "".join(read_bytes_list)
+    
+    file("../test_data/120-second-bt-stream.dat", "wb").write(read_bytes)
+    json.dump(chunks_timing, file("../test_data/120-second-bt-stream-timing.json", "w"))
 
 
 if __name__ == "__main__":

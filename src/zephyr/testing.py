@@ -1,32 +1,45 @@
 
 import time
+import json
 
 import zephyr.connection
 import zephyr.signal
 
 
-def simulate_signal_packets_from_file(bt_stream_data_file, packet_handler):
-    input_file = open(bt_stream_data_file, "rb")
+class TimestampCorrector:
+    def __init__(self, handler):
+        self.timestamp_correction = None
+        self.handler = handler
     
-    signal_packets = []
+    def __call__(self, packet):
+        if self.timestamp_correction is None:
+            timestamp_correction = time.time() - packet.timestamp
+        
+        timestamp_corrected_packet = packet._replace(timestamp=packet.timestamp + timestamp_correction)
+        self.handler(timestamp_corrected_packet)
+
+def simulate_signal_packets_from_file(stream_data_path, timing_data_path, packet_handler, sleeping=True):
+    input_file = open(stream_data_path, "rb")
+    timings = json.load(open(timing_data_path))
     
-    signal_receiver = zephyr.signal.SignalMessageParser(signal_packets.append)
+    timestamp_corrector = TimestampCorrector(packet_handler)
+    
+    signal_receiver = zephyr.signal.SignalMessageParser(timestamp_corrector)
     connection = zephyr.connection.Connection(input_file, signal_receiver.handle_message)
     
-    while connection.read_and_handle_bytes(1):
-        pass
+    start_time = time.time()
     
-    first_message_timestamp = signal_packets[0].timestamp
+    bytes_read = 0
     
-    timestamp_correction = time.time() - first_message_timestamp
-    
-    for packet in signal_packets:
-        timestamp_corrected_packet = packet._replace(timestamp=packet.timestamp + timestamp_correction)
+    for chunk_timestamp, chunk_cumulative_byte_count in timings:
+        time_to_sleep = chunk_timestamp - (time.time() - start_time)
         
-        while timestamp_corrected_packet.timestamp > time.time():
-            time.sleep(0.01)
+        if sleeping and time_to_sleep > 0:
+            time.sleep(time_to_sleep)
         
-        packet_handler(timestamp_corrected_packet)
+        bytes_to_read = chunk_cumulative_byte_count - bytes_read
+        connection.read_and_handle_bytes(bytes_to_read)
+        bytes_read = chunk_cumulative_byte_count
 
 
 def visualize_measurements(signal_collector):
