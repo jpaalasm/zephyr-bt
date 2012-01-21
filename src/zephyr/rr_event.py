@@ -1,4 +1,8 @@
 
+import threading
+import collections
+import time
+
 import zephyr.signal
 
 def sign(value):
@@ -37,3 +41,43 @@ class SignalCollectorWithRRProcessing(zephyr.signal.SignalCollector):
                 rr_event_timestamp = relative_rr_event_timestamp + rr_signal_start_timestamp
                 
                 self.rr_events.append((rr_event_timestamp, rr_event_value))
+
+
+class DelayedRealTimeStream(threading.Thread):
+    def __init__(self, callback, delay=2.0):
+        threading.Thread.__init__(self)
+        self.callback = callback
+        self.delay = delay
+        self.rr_events_sent = 0
+        self.signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
+        
+        self.stream_progresses = collections.defaultdict(lambda: 0)
+    
+    def handle_packet(self, signal_packet):
+        self.signal_collector.handle_packet(signal_packet)
+    
+    def run(self):
+        # Wait so that all signal streams have been initialized
+        time.sleep(self.delay + 3.0)
+        
+        while True:
+            delayed_current_time = time.time() - self.delay
+            
+            for stream_name, stream in self.signal_collector.signal_streams.items():
+                stream_sample_index = int((delayed_current_time - stream.start_timestamp) * stream.samplerate)
+                
+                stream_progress = self.stream_progresses[stream_name]
+                
+                if stream_sample_index > stream_progress:
+                    delayed_value = stream.signal_values[stream_sample_index]
+                    self.callback(stream_name, delayed_value)
+                    self.stream_progresses[stream_name] = stream_sample_index
+            
+            if len(self.signal_collector.rr_events) > self.rr_events_sent:
+                rr_event_timestamp, rr_event_value = self.signal_collector.rr_events[self.rr_events_sent]
+                
+                if rr_event_timestamp <= delayed_current_time:
+                    self.callback("rr_event", rr_event_value)
+                    self.rr_events_sent += 1
+            
+            time.sleep(0.01)
