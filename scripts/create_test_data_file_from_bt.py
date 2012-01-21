@@ -3,17 +3,17 @@ import serial
 import time
 
 import zephyr.message
-import zephyr.connection
+import zephyr.protocol
 import json
 
 def main():
     ser = serial.Serial(23)
-    connection = zephyr.connection.Connection(ser, None)
+    protocol = zephyr.protocol.Protocol(ser, None)
     
-    connection.send_message(0x15, [1])
-    connection.send_message(0x16, [1])
-    connection.send_message(0x19, [1])
-    connection.send_message(0x1E, [1])
+    protocol.send_message(0x15, [1])
+    protocol.send_message(0x16, [1])
+    protocol.send_message(0x19, [1])
+    protocol.send_message(0x1E, [1])
     
     start_time = time.time()
     

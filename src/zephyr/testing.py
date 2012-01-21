@@ -3,7 +3,7 @@ import time
 import json
 import os
 
-import zephyr.connection
+import zephyr.protocol
 import zephyr.signal
 
 
@@ -30,7 +30,7 @@ def simulate_signal_packets_from_file(stream_data_path, timing_data_path, packet
     timestamp_corrector = TimestampCorrector(packet_handler)
     
     signal_receiver = zephyr.signal.SignalMessageParser(timestamp_corrector)
-    connection = zephyr.connection.Connection(input_file, signal_receiver.handle_message)
+    connection = zephyr.protocol.Protocol(input_file, signal_receiver.handle_message)
     
     start_time = time.time()
     
