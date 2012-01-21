@@ -52,6 +52,11 @@ class DelayedRealTimeStream(threading.Thread):
         self.delay = delay
         
         self.stream_progresses = collections.defaultdict(lambda: 0)
+        
+        self.terminate_requested = False
+    
+    def terminate(self):
+        self.terminate_requested = True
     
     def handle_packet(self, signal_packet):
         self.signal_collector.handle_packet(signal_packet)
@@ -60,7 +65,7 @@ class DelayedRealTimeStream(threading.Thread):
         # Wait so that all signal streams have been initialized
         time.sleep(self.delay + 1.0)
         
-        while True:
+        while not self.terminate_requested:
             delayed_current_time = time.time() - self.delay
             
             for stream_name, stream in self.signal_collector.signal_streams.items():
