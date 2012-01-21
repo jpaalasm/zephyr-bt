@@ -1,9 +1,13 @@
 
 import time
 import json
+import os
 
 import zephyr.connection
 import zephyr.signal
+
+
+test_data_dir = os.path.join(os.path.split(os.path.split(os.path.split(__file__)[0])[0])[0], "test_data")
 
 
 class TimestampCorrector:
@@ -17,6 +21,7 @@ class TimestampCorrector:
         
         timestamp_corrected_packet = packet._replace(timestamp=packet.timestamp + timestamp_correction)
         self.handler(timestamp_corrected_packet)
+
 
 def simulate_signal_packets_from_file(stream_data_path, timing_data_path, packet_handler, sleeping=True):
     input_file = open(stream_data_path, "rb")
