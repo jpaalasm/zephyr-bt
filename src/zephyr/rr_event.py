@@ -26,8 +26,9 @@ class RREventParser:
 class SignalCollectorWithRRProcessing(zephyr.signal.SignalCollector):
     def __init__(self):
         zephyr.signal.SignalCollector.__init__(self)
+        
+        self.initialize_event_stream("rr_event")
         self.rr_event_parser = None
-        self.rr_events = []
     
     def handle_packet(self, signal_packet):
         zephyr.signal.SignalCollector.handle_packet(self, signal_packet)
@@ -40,16 +41,15 @@ class SignalCollectorWithRRProcessing(zephyr.signal.SignalCollector):
             for relative_rr_event_timestamp, rr_event_value in self.rr_event_parser.handle_values(signal_packet.signal_values):
                 rr_event_timestamp = relative_rr_event_timestamp + rr_signal_start_timestamp
                 
-                self.rr_events.append((rr_event_timestamp, rr_event_value))
+                self.event_streams["rr_event"].append((rr_event_timestamp, rr_event_value))
 
 
 class DelayedRealTimeStream(threading.Thread):
-    def __init__(self, callback, delay=2.0):
+    def __init__(self, signal_collector, callback, delay=2.0):
         threading.Thread.__init__(self)
+        self.signal_collector = signal_collector
         self.callback = callback
         self.delay = delay
-        self.rr_events_sent = 0
-        self.signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
         
         self.stream_progresses = collections.defaultdict(lambda: 0)
     
@@ -58,7 +58,7 @@ class DelayedRealTimeStream(threading.Thread):
     
     def run(self):
         # Wait so that all signal streams have been initialized
-        time.sleep(self.delay + 3.0)
+        time.sleep(self.delay + 1.0)
         
         while True:
             delayed_current_time = time.time() - self.delay
@@ -73,11 +73,15 @@ class DelayedRealTimeStream(threading.Thread):
                     self.callback(stream_name, delayed_value)
                     self.stream_progresses[stream_name] = stream_sample_index
             
-            if len(self.signal_collector.rr_events) > self.rr_events_sent:
-                rr_event_timestamp, rr_event_value = self.signal_collector.rr_events[self.rr_events_sent]
+            
+            for stream_name, stream in self.signal_collector.event_streams.items():
+                stream_progress = self.stream_progresses[stream_name]
                 
-                if rr_event_timestamp <= delayed_current_time:
-                    self.callback("rr_event", rr_event_value)
-                    self.rr_events_sent += 1
+                if len(stream) > stream_progress:
+                    event_timestamp, event_value = stream[stream_progress]
+                    
+                    if event_timestamp <= delayed_current_time:
+                        self.callback(stream_name, event_value)
+                        self.stream_progresses[stream_name] += 1
             
             time.sleep(0.01)

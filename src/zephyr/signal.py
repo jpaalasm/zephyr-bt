@@ -95,9 +95,18 @@ class SignalMessageParser:
 class SignalCollector:
     def __init__(self):
         self.signal_streams = {}
+        self.event_streams = {}
         self.estimated_clock_difference = None
     
-    def initialize_stream(self, signal_packet):
+    def initialize_event_stream(self, stream_name):
+        all_stream_names = self.event_streams.keys() + self.signal_streams.keys()
+        assert stream_name not in all_stream_names
+        self.event_streams[stream_name] = []
+    
+    def initialize_signal_stream(self, signal_packet):
+        all_stream_names = self.event_streams.keys() + self.signal_streams.keys()
+        assert signal_packet.type not in all_stream_names
+        
         if self.estimated_clock_difference is None:
             temporal_message_length = len(signal_packet.signal_values) / signal_packet.samplerate
             local_message_start_time = time.time() - temporal_message_length
@@ -108,7 +117,7 @@ class SignalCollector:
     
     def handle_packet(self, signal_packet):
         if signal_packet.type not in self.signal_streams:
-            self.initialize_stream(signal_packet)
+            self.initialize_signal_stream(signal_packet)
         
         signal_stream = self.signal_streams[signal_packet.type]
         signal_stream.signal_values.extend(signal_packet.signal_values)
