@@ -17,3 +17,9 @@ class Protocol:
         
         nbytes_read = len(data_string)
         return nbytes_read
+    
+    def enable_signals(self):
+        self.send_message(0x15, [1])
+        self.send_message(0x16, [1])
+        self.send_message(0x19, [1])
+        self.send_message(0x1E, [1])
