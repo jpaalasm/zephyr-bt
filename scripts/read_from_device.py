@@ -20,10 +20,7 @@ def main():
     signal_receiver = zephyr.signal.SignalMessageParser(signal_collector.handle_packet)
     protocol = zephyr.protocol.Protocol(ser, signal_receiver.handle_message)
     
-    protocol.send_message(0x15, [1])
-    protocol.send_message(0x16, [1])
-    protocol.send_message(0x19, [1])
-    protocol.send_message(0x1E, [1])
+    protocol.enable_signals()
     
     stream_thread = zephyr.rr_event.DelayedRealTimeStream(signal_collector, callback)
     stream_thread.start()

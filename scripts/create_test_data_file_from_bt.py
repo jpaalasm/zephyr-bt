@@ -10,10 +10,7 @@ def main():
     ser = serial.Serial(23)
     protocol = zephyr.protocol.Protocol(ser, None)
     
-    protocol.send_message(0x15, [1])
-    protocol.send_message(0x16, [1])
-    protocol.send_message(0x19, [1])
-    protocol.send_message(0x1E, [1])
+    protocol.enable_signals()
     
     start_time = time.time()
     
