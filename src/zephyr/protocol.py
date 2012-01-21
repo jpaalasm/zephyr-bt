@@ -9,7 +9,7 @@ class Protocol:
     
     def send_message(self, message_id, payload):
         message_frame = zephyr.message.create_message_frame(message_id, payload)
-        self.ser.write(message_frame)
+        self.connection.write(message_frame)
     
     def read_and_handle_bytes(self, num_bytes):
         data_string = self.connection.read(num_bytes)
