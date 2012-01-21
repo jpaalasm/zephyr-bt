@@ -51,7 +51,7 @@ def visualize_measurements(signal_collector):
     import numpy
     import pylab
     
-    rr_events_array = numpy.array(signal_collector.rr_events)
+    rr_events_array = numpy.array(signal_collector.event_streams["rr_event"])
     
     acceleration_start_timestamp, acceleration_samplerate, acceleration_signal = signal_collector.signal_streams["acceleration"]
     breathing_start_timestamp, breathing_samplerate, breathing_signal = signal_collector.signal_streams["breathing"]
