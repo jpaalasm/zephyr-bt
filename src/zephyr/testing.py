@@ -10,26 +10,11 @@ import zephyr.signal
 test_data_dir = os.path.join(os.path.split(os.path.split(os.path.split(__file__)[0])[0])[0], "test_data")
 
 
-class TimestampCorrector:
-    def __init__(self, handler):
-        self.timestamp_correction = None
-        self.handler = handler
-    
-    def __call__(self, packet):
-        if self.timestamp_correction is None:
-            timestamp_correction = time.time() - packet.timestamp
-        
-        timestamp_corrected_packet = packet._replace(timestamp=packet.timestamp + timestamp_correction)
-        self.handler(timestamp_corrected_packet)
-
-
 def simulate_signal_packets_from_file(stream_data_path, timing_data_path, packet_handler, sleeping=True):
     input_file = open(stream_data_path, "rb")
     timings = json.load(open(timing_data_path))
     
-    timestamp_corrector = TimestampCorrector(packet_handler)
-    
-    signal_receiver = zephyr.signal.SignalMessageParser(timestamp_corrector)
+    signal_receiver = zephyr.signal.SignalMessageParser(packet_handler)
     connection = zephyr.protocol.Protocol(input_file, signal_receiver.handle_message)
     
     start_time = time.time()

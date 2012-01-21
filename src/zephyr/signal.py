@@ -112,7 +112,7 @@ class SignalCollector:
             local_message_start_time = time.time() - temporal_message_length
             self.estimated_clock_difference = signal_packet.timestamp - local_message_start_time
         
-        signal_stream = SignalStream(signal_packet.timestamp, signal_packet.samplerate, [])
+        signal_stream = SignalStream(signal_packet.timestamp - self.estimated_clock_difference, signal_packet.samplerate, [])
         self.signal_streams[signal_packet.type] = signal_stream
     
     def handle_packet(self, signal_packet):
