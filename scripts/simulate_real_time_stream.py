@@ -5,6 +5,7 @@ import collections
 
 import zephyr.rr_event
 import zephyr.testing
+import zephyr.delayed_stream
 
 
 def callback(value_name, value):
@@ -13,7 +14,7 @@ def callback(value_name, value):
 def main():
     signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
     
-    stream_thread = zephyr.rr_event.DelayedRealTimeStream(signal_collector, callback)
+    stream_thread = zephyr.delayed_stream.DelayedRealTimeStream(signal_collector, callback)
     stream_thread.start()
     
     data_dir = zephyr.testing.test_data_dir

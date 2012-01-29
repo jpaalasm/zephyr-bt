@@ -6,6 +6,7 @@ import zephyr.message
 import zephyr.protocol
 import zephyr.signal
 import zephyr.rr_event
+import zephyr.delayed_stream
 import zephyr.testing
 
 def callback(value_name, value):
@@ -22,7 +23,7 @@ def main():
     
     protocol.enable_signals()
     
-    stream_thread = zephyr.rr_event.DelayedRealTimeStream(signal_collector, callback)
+    stream_thread = zephyr.delayed_stream.DelayedRealTimeStream(signal_collector, callback)
     stream_thread.start()
     
     start_time = time.time()
