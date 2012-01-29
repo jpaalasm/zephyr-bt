@@ -1,2 +1,61 @@
 pyzephyr is a Python library for interfacing with a Zephyr BioHarness(TM) device
 over a serial Bluetooth connection.
+
+The following things are supported:
+ - Reading the data stream from the device and sending command messages to
+   the device (zephyr.protocol.Protocol)
+ - Parsing data messages from a serial stream (zephyr.message.MessageFrameParser)
+ - Extracting signal values from signal packets (zephyr.signal.SignalMessageParser)
+ - Collecting continuous and timestamped signal streams (zephyr.signal.SignalCollector)
+ - Extracting R-to-R ECG events (zephyr.rr_event.SignalCollectorWithRRProcessing)
+ - A continuous stream of signal values with a constant delay, which hides the
+   packet representation of the signals (zephyr.delayed_stream.DelayedRealTimeStream)
+
+
+The typical flow of
+ - data from the device to pyzephyr and
+ - commands from pyzephyr to the device
+
+is shown below.
+
+
+  |--------------------------------------------------------|
+  |                     Serial connection                  |
+  |--------------------------------------------------------|
+              |                               ^
+              |                               |
+              v                               |          
+  |-----------------------|       |------------------------|
+  |   Bytes from device   |       |     Bytes to device    |
+  |-----------------------|       |------------------------|
+              |                               ^
+              |                               |
+              v                               |
+  |--------------------------------------------------------|
+  |                          Protocol                      |
+  |--------------------------------------------------------|
+              |                               ^
+              |                               |
+              v                               |          
+  |-----------------------|       |------------------------|
+  |  MessageFrameParser   |       | Commands to the device |
+  |-----------------------|       |------------------------|
+              |
+              |
+              v
+  |-----------------------|
+  |    SignalCollector    |
+  |-----------------------|
+              |
+              |
+              v
+  |-----------------------|
+  | DelayedRealTimeStream |
+  |-----------------------|
+              |
+              |
+              v
+  |-----------------------|
+  |  A continuous stream  |
+  |   of signal values    |
+  |-----------------------|
