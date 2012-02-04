@@ -18,6 +18,13 @@ class Protocol:
         nbytes_read = len(data_string)
         return nbytes_read
     
+    def read_and_handle_forever(self):
+        try:
+            while True:
+                self.read_and_handle_bytes(1)
+        except KeyboardInterrupt:
+            print "Received Ctrl-C, exiting"
+    
     def enable_signals(self):
         self.send_message(0x15, [1])
         self.send_message(0x16, [1])

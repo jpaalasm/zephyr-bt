@@ -1,13 +1,19 @@
 
 import serial
 import time
+import platform
+import json
 
 import zephyr.message
 import zephyr.protocol
-import json
 
 def main():
-    ser = serial.Serial(23)
+    serial_port_dict = {"Darwin": "/dev/cu.BHBHT001931-iSerialPort1",
+                        "Windows": 23}
+    
+    serial_port = serial_port_dict[platform.system()]
+    ser = serial.Serial(serial_port)
+    
     protocol = zephyr.protocol.Protocol(ser, None)
     
     protocol.enable_signals()

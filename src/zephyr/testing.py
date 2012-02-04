@@ -21,15 +21,18 @@ def simulate_signal_packets_from_file(stream_data_path, timing_data_path, packet
     
     bytes_read = 0
     
-    for chunk_timestamp, chunk_cumulative_byte_count in timings:
-        time_to_sleep = chunk_timestamp - (time.time() - start_time)
-        
-        if sleeping and time_to_sleep > 0:
-            time.sleep(time_to_sleep)
-        
-        bytes_to_read = chunk_cumulative_byte_count - bytes_read
-        connection.read_and_handle_bytes(bytes_to_read)
-        bytes_read = chunk_cumulative_byte_count
+    try:
+        for chunk_timestamp, chunk_cumulative_byte_count in timings:
+            time_to_sleep = chunk_timestamp - (time.time() - start_time)
+            
+            if sleeping and time_to_sleep > 0:
+                time.sleep(time_to_sleep)
+            
+            bytes_to_read = chunk_cumulative_byte_count - bytes_read
+            connection.read_and_handle_bytes(bytes_to_read)
+            bytes_read = chunk_cumulative_byte_count
+    except KeyboardInterrupt:
+        print "Received Ctrl-C, exiting"
 
 
 def visualize_measurements(signal_collector):
