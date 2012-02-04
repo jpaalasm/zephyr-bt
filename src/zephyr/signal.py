@@ -16,7 +16,7 @@ def unpack_bit_packed_values(data_bytes, value_nbits, twos_complement):
     represented_value_count = 2**value_nbits
     half_represented_value_count = represented_value_count / 2
     
-    unpacked_values = [] 
+    unpacked_values = []
     
     for value_i in range(value_count):
         value_start_bit = value_i * value_nbits
@@ -42,6 +42,8 @@ class SignalMessageParser:
                              0x22: (self.handle_10_bit_signal, "ecg", 250.0),
                              0x24: (self.handle_rr_payload, "rr", 18.0),
                              0x25: (self.handle_accelerometer_payload, "acceleration", 50.0)}
+        
+        self.sequence_numbers = {}
     
     def parse_header_timestamp(self, header_bytes):
         year = header_bytes[1] + (header_bytes[2] << 8)
@@ -61,6 +63,17 @@ class SignalMessageParser:
             
             header_bytes = message.payload[:9]
             signal_bytes = message.payload[9:]
+            
+            sequence_number = header_bytes[0]
+            
+            previous_sequence_number = self.sequence_numbers.get(signal_code)
+            if previous_sequence_number is not None:
+                expected_sequence_number = (previous_sequence_number + 1) % 256
+                if sequence_number != expected_sequence_number:
+                    raise ValueError("Invalid sequence number %d -> %d" %
+                                     (previous_sequence_number, sequence_number))
+            
+            self.sequence_numbers[signal_code] = sequence_number
             
             message_timestamp = self.parse_header_timestamp(header_bytes)
             
