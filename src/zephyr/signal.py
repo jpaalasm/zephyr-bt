@@ -45,12 +45,14 @@ class SignalMessageParser:
         
         self.sequence_numbers = {}
     
-    def parse_header_timestamp(self, header_bytes):
-        year = header_bytes[1] + (header_bytes[2] << 8)
-        month = header_bytes[3]
-        day = header_bytes[4]
-        day_milliseconds = (header_bytes[5] + (header_bytes[6] << 8) +
-                            (header_bytes[7] << 16) + (header_bytes[8] << 24))
+    def parse_timestamp(self, timestamp_bytes):
+        year = timestamp_bytes[0] + (timestamp_bytes[1] << 8)
+        month = timestamp_bytes[2]
+        day = timestamp_bytes[3]
+        day_milliseconds = (timestamp_bytes[4] +
+                            (timestamp_bytes[5] << 8) +
+                            (timestamp_bytes[6] << 16) +
+                            (timestamp_bytes[7] << 24))
         
         date = datetime.date(year=year, month=month, day=day)
         
@@ -61,10 +63,9 @@ class SignalMessageParser:
         if message.message_id in self.signal_types:
             message_handler, signal_code, samplerate = self.signal_types[message.message_id]
             
-            header_bytes = message.payload[:9]
+            sequence_number = message.payload[0]
+            timestamp_bytes = message.payload[1:9]
             signal_bytes = message.payload[9:]
-            
-            sequence_number = header_bytes[0]
             
             previous_sequence_number = self.sequence_numbers.get(signal_code)
             if previous_sequence_number is not None:
@@ -75,7 +76,7 @@ class SignalMessageParser:
             
             self.sequence_numbers[signal_code] = sequence_number
             
-            message_timestamp = self.parse_header_timestamp(header_bytes)
+            message_timestamp = self.parse_timestamp(timestamp_bytes)
             
             signal_values = message_handler(signal_bytes)
             
