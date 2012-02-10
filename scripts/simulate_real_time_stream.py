@@ -19,12 +19,13 @@ def main():
     
     data_dir = zephyr.testing.test_data_dir
     
-    zephyr.testing.simulate_signal_packets_from_file(data_dir + "/120-second-bt-stream.dat",
-                                                     data_dir + "/120-second-bt-stream-timing.json",
-                                                     stream_thread.handle_packet)
-    
-    stream_thread.terminate()
-    stream_thread.join()
+    try:
+        zephyr.testing.simulate_signal_packets_from_file(data_dir + "/120-second-bt-stream.dat",
+                                                         data_dir + "/120-second-bt-stream-timing.json",
+                                                         stream_thread.handle_packet)
+    finally:
+        stream_thread.terminate()
+        stream_thread.join()
 
 
 if __name__ == "__main__":
