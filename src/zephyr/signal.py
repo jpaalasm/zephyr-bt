@@ -112,6 +112,10 @@ class SignalCollector:
         self.event_streams = {}
         self.estimated_clock_difference = None
     
+    def get_message_end_timestamp(self, signal_packet):
+        temporal_message_length = len(signal_packet.signal_values) / signal_packet.samplerate
+        return signal_packet.timestamp + temporal_message_length
+    
     def initialize_event_stream(self, stream_name):
         all_stream_names = self.event_streams.keys() + self.signal_streams.keys()
         assert stream_name not in all_stream_names
@@ -121,15 +125,16 @@ class SignalCollector:
         all_stream_names = self.event_streams.keys() + self.signal_streams.keys()
         assert signal_packet.type not in all_stream_names
         
-        if self.estimated_clock_difference is None:
-            temporal_message_length = len(signal_packet.signal_values) / signal_packet.samplerate
-            local_message_start_time = time.time() - temporal_message_length
-            self.estimated_clock_difference = signal_packet.timestamp - local_message_start_time
-        
         signal_stream = SignalStream(signal_packet.timestamp - self.estimated_clock_difference, signal_packet.samplerate, [])
         self.signal_streams[signal_packet.type] = signal_stream
     
     def handle_packet(self, signal_packet):
+        message_end_timestamp = self.get_message_end_timestamp(signal_packet)
+        clock_difference_estimate = message_end_timestamp - time.time()
+        
+        if self.estimated_clock_difference is None or self.estimated_clock_difference < clock_difference_estimate:
+            self.estimated_clock_difference = clock_difference_estimate
+        
         if signal_packet.type not in self.signal_streams:
             self.initialize_signal_stream(signal_packet)
         
