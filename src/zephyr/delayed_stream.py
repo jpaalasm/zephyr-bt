@@ -34,9 +34,12 @@ class DelayedRealTimeStream(threading.Thread):
                 stream_progress = self.stream_progresses[stream_name]
                 
                 if stream_sample_index > stream_progress:
-                    delayed_value = stream.signal_values[stream_sample_index]
-                    self.callback(stream_name, delayed_value)
-                    self.stream_progresses[stream_name] = stream_sample_index
+                    if stream_sample_index < len(stream.signal_values):
+                        delayed_value = stream.signal_values[stream_sample_index]
+                        self.callback(stream_name, delayed_value)
+                        self.stream_progresses[stream_name] = stream_sample_index
+                    else:
+                        print "%1.3f sec of data missing" % ((stream_sample_index - len(stream.signal_values)) / stream.samplerate)
             
             
             for stream_name, stream in self.signal_collector.iterate_event_streams():
