@@ -108,8 +108,9 @@ class SignalMessageParser:
 
 class SignalCollector:
     def __init__(self):
-        self.signal_streams = {}
-        self.event_streams = {}
+        self._signal_streams = {}
+        self._event_streams = {}
+        
         self.estimated_clock_difference = None
     
     def get_message_end_timestamp(self, signal_packet):
@@ -117,16 +118,19 @@ class SignalCollector:
         return signal_packet.timestamp + temporal_message_length
     
     def initialize_event_stream(self, stream_name):
-        all_stream_names = self.event_streams.keys() + self.signal_streams.keys()
+        all_stream_names = self._event_streams.keys() + self._signal_streams.keys()
         assert stream_name not in all_stream_names
-        self.event_streams[stream_name] = []
+        self._event_streams[stream_name] = []
+    
+    def append_to_event_stream(self, stream_name, value):
+        self._event_streams[stream_name].append(value)
     
     def initialize_signal_stream(self, signal_packet):
-        all_stream_names = self.event_streams.keys() + self.signal_streams.keys()
+        all_stream_names = self._event_streams.keys() + self._signal_streams.keys()
         assert signal_packet.type not in all_stream_names
         
         signal_stream = SignalStream(signal_packet.timestamp - self.estimated_clock_difference, signal_packet.samplerate, [])
-        self.signal_streams[signal_packet.type] = signal_stream
+        self._signal_streams[signal_packet.type] = signal_stream
     
     def handle_packet(self, signal_packet):
         message_end_timestamp = self.get_message_end_timestamp(signal_packet)
@@ -135,8 +139,18 @@ class SignalCollector:
         if self.estimated_clock_difference is None or self.estimated_clock_difference < clock_difference_estimate:
             self.estimated_clock_difference = clock_difference_estimate
         
-        if signal_packet.type not in self.signal_streams:
+        if signal_packet.type not in self._signal_streams:
             self.initialize_signal_stream(signal_packet)
         
-        signal_stream = self.signal_streams[signal_packet.type]
+        signal_stream = self._signal_streams[signal_packet.type]
         signal_stream.signal_values.extend(signal_packet.signal_values)
+    
+    def get_signal_stream(self, stream_type):
+        signal_stream = self._signal_streams[stream_type]
+        return signal_stream
+    
+    def iterate_signal_streams(self):
+        return self._signal_streams.iteritems()
+
+    def iterate_event_streams(self):
+        return self._event_streams.iteritems()

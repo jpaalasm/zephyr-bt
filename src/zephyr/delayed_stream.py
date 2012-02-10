@@ -28,7 +28,7 @@ class DelayedRealTimeStream(threading.Thread):
         while not self.terminate_requested:
             delayed_current_time = time.time() - self.delay
             
-            for stream_name, stream in self.signal_collector.signal_streams.items():
+            for stream_name, stream in self.signal_collector.iterate_signal_streams():
                 stream_sample_index = int((delayed_current_time - stream.start_timestamp) * stream.samplerate)
                 
                 stream_progress = self.stream_progresses[stream_name]
@@ -39,7 +39,7 @@ class DelayedRealTimeStream(threading.Thread):
                     self.stream_progresses[stream_name] = stream_sample_index
             
             
-            for stream_name, stream in self.signal_collector.event_streams.items():
+            for stream_name, stream in self.signal_collector.iterate_event_streams():
                 stream_progress = self.stream_progresses[stream_name]
                 
                 if len(stream) > stream_progress:
