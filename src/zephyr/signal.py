@@ -129,7 +129,7 @@ class SignalCollector:
         all_stream_names = self._event_streams.keys() + self._signal_streams.keys()
         assert signal_packet.type not in all_stream_names
         
-        signal_stream = SignalStream(signal_packet.timestamp - self.estimated_clock_difference, signal_packet.samplerate, [])
+        signal_stream = SignalStream(signal_packet.timestamp, signal_packet.samplerate, [])
         self._signal_streams[signal_packet.type] = signal_stream
     
     def handle_packet(self, signal_packet):
@@ -147,10 +147,12 @@ class SignalCollector:
     
     def get_signal_stream(self, stream_type):
         signal_stream = self._signal_streams[stream_type]
+        signal_stream = SignalStream(signal_stream.start_timestamp - self.estimated_clock_difference, signal_stream.samplerate, signal_stream.signal_values)
         return signal_stream
     
     def iterate_signal_streams(self):
-        return self._signal_streams.iteritems()
-
+        for stream_type in self._signal_streams.keys():
+            yield stream_type, self.get_signal_stream(stream_type)
+    
     def iterate_event_streams(self):
         return self._event_streams.iteritems()
