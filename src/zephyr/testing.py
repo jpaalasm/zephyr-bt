@@ -39,11 +39,11 @@ def visualize_measurements(signal_collector):
     import numpy
     import pylab
     
-    rr_events_array = numpy.array(signal_collector.event_streams["rr_event"])
+    rr_events_array = numpy.array(signal_collector.get_event_stream("rr_event"))
     
-    acceleration_start_timestamp, acceleration_samplerate, acceleration_signal = signal_collector.signal_streams["acceleration"]
-    breathing_start_timestamp, breathing_samplerate, breathing_signal = signal_collector.signal_streams["breathing"]
-    ecg_start_timestamp, ecg_samplerate, ecg_signal = signal_collector.signal_streams["ecg"]
+    acceleration_start_timestamp, acceleration_samplerate, acceleration_signal = signal_collector.get_signal_stream("acceleration")
+    breathing_start_timestamp, breathing_samplerate, breathing_signal = signal_collector.get_signal_stream("breathing")
+    ecg_start_timestamp, ecg_samplerate, ecg_signal = signal_collector.get_signal_stream("ecg")
     
     ax1 = pylab.subplot(4,1,1)
     ax2 = pylab.subplot(4,1,2,sharex=ax1)

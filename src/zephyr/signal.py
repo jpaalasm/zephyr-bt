@@ -96,11 +96,16 @@ class SignalMessageParser:
 
 
 class SignalCollector:
-    def __init__(self):
+    def __init__(self, clock_difference_correction=True):
         self._signal_streams = {}
         self._event_streams = {}
         self.sequence_numbers = {}
-        self.estimated_clock_difference = None
+        self.clock_difference_correction = clock_difference_correction
+        
+        if self.clock_difference_correction:
+            self.estimated_clock_difference = None
+        else:
+            self.estimated_clock_difference = 0
     
     def get_message_end_timestamp(self, signal_packet):
         temporal_message_length = len(signal_packet.signal_values) / signal_packet.samplerate
@@ -125,11 +130,12 @@ class SignalCollector:
         del self._signal_streams[stream_name]
     
     def handle_packet(self, signal_packet):
-        message_end_timestamp = self.get_message_end_timestamp(signal_packet)
-        clock_difference_estimate = message_end_timestamp - time.time()
-        
-        if self.estimated_clock_difference is None or self.estimated_clock_difference < clock_difference_estimate:
-            self.estimated_clock_difference = clock_difference_estimate
+        if self.clock_difference_correction:
+            message_end_timestamp = self.get_message_end_timestamp(signal_packet)
+            clock_difference_estimate = message_end_timestamp - time.time()
+            
+            if self.estimated_clock_difference is None or self.estimated_clock_difference < clock_difference_estimate:
+                self.estimated_clock_difference = clock_difference_estimate
         
         previous_sequence_number = self.sequence_numbers.get(signal_packet.type)
         if previous_sequence_number is not None:
@@ -152,6 +158,10 @@ class SignalCollector:
         signal_stream = self._signal_streams[stream_type]
         signal_stream = SignalStream(signal_stream.start_timestamp - self.estimated_clock_difference, signal_stream.samplerate, signal_stream.signal_values)
         return signal_stream
+    
+    def get_event_stream(self, stream_type):
+        event_stream = self._event_streams[stream_type]
+        return event_stream
     
     def iterate_signal_streams(self):
         for stream_type in self._signal_streams.keys():
