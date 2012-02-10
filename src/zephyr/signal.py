@@ -5,7 +5,7 @@ import collections
 
 
 SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
-SignalPacket = collections.namedtuple("SignalPacket", ["type", "timestamp", "samplerate", "signal_values"])
+SignalPacket = collections.namedtuple("SignalPacket", ["type", "timestamp", "samplerate", "signal_values", "sequence_number"])
 
 
 def unpack_bit_packed_values(data_bytes, value_nbits, twos_complement):
@@ -42,8 +42,6 @@ class SignalMessageParser:
                              0x22: (self.handle_10_bit_signal, "ecg", 250.0),
                              0x24: (self.handle_rr_payload, "rr", 18.0),
                              0x25: (self.handle_accelerometer_payload, "acceleration", 50.0)}
-        
-        self.sequence_numbers = {}
     
     def parse_timestamp(self, timestamp_bytes):
         year = timestamp_bytes[0] + (timestamp_bytes[1] << 8)
@@ -67,20 +65,11 @@ class SignalMessageParser:
             timestamp_bytes = message.payload[1:9]
             signal_bytes = message.payload[9:]
             
-            previous_sequence_number = self.sequence_numbers.get(signal_code)
-            if previous_sequence_number is not None:
-                expected_sequence_number = (previous_sequence_number + 1) % 256
-                if sequence_number != expected_sequence_number:
-                    raise ValueError("Invalid sequence number %d -> %d" %
-                                     (previous_sequence_number, sequence_number))
-            
-            self.sequence_numbers[signal_code] = sequence_number
-            
             message_timestamp = self.parse_timestamp(timestamp_bytes)
             
             signal_values = message_handler(signal_bytes)
             
-            signal_packet = SignalPacket(signal_code, message_timestamp, samplerate, signal_values)
+            signal_packet = SignalPacket(signal_code, message_timestamp, samplerate, signal_values, sequence_number)
             self.callback(signal_packet)
     
     def handle_10_bit_signal(self, signal_bytes):
@@ -110,7 +99,7 @@ class SignalCollector:
     def __init__(self):
         self._signal_streams = {}
         self._event_streams = {}
-        
+        self.sequence_numbers = {}
         self.estimated_clock_difference = None
     
     def get_message_end_timestamp(self, signal_packet):
@@ -132,12 +121,26 @@ class SignalCollector:
         signal_stream = SignalStream(signal_packet.timestamp, signal_packet.samplerate, [])
         self._signal_streams[signal_packet.type] = signal_stream
     
+    def reset_signal_stream(self, stream_name):
+        del self._signal_streams[stream_name]
+    
     def handle_packet(self, signal_packet):
         message_end_timestamp = self.get_message_end_timestamp(signal_packet)
         clock_difference_estimate = message_end_timestamp - time.time()
         
         if self.estimated_clock_difference is None or self.estimated_clock_difference < clock_difference_estimate:
             self.estimated_clock_difference = clock_difference_estimate
+        
+        previous_sequence_number = self.sequence_numbers.get(signal_packet.type)
+        if previous_sequence_number is not None:
+            expected_sequence_number = (previous_sequence_number + 1) % 256
+            if signal_packet.sequence_number != expected_sequence_number:
+                print "Invalid sequence number in stream %s: %d -> %d" % (signal_packet.type,
+                                                                          previous_sequence_number,
+                                                                          signal_packet.sequence_number)
+                self.reset_signal_stream(signal_packet.type)
+        
+        self.sequence_numbers[signal_packet.type] = signal_packet.sequence_number
         
         if signal_packet.type not in self._signal_streams:
             self.initialize_signal_stream(signal_packet)
