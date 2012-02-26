@@ -1,4 +1,6 @@
 
+import logging
+
 def crc_8_digest(values):
     crc = 0
     
@@ -68,7 +70,7 @@ class MessageFrameParser:
             try:
                 self.handler(byte)
             except ProtocolError, e:
-                print e
+                logging.warning("ProtocolError: %s", e)
                 self.handler = self.handle_stx
                 self.message = None
     

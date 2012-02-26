@@ -1,4 +1,6 @@
 
+import logging
+
 import zephyr.message
 
 
@@ -23,7 +25,7 @@ class Protocol:
             while True:
                 self.read_and_handle_bytes(1)
         except KeyboardInterrupt:
-            print "Received Ctrl-C, exiting"
+            logging.info("Received Ctrl-C, exiting")
     
     def enable_signals(self):
         self.send_message(0x15, [1])

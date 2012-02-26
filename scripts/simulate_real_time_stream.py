@@ -9,9 +9,13 @@ import zephyr.delayed_stream
 
 
 def callback(value_name, value):
-    print "%020s %s" % (value_name, value)
+    if value_name == "rr_event":
+        print "                      ",
+        print "%020s %s" % (value_name, value)
 
 def main():
+    zephyr.configure_root_logger()
+    
     signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
     
     stream_thread = zephyr.delayed_stream.DelayedRealTimeStream(signal_collector, callback)

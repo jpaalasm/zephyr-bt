@@ -15,6 +15,8 @@ def callback(value_name, value):
         print ["%010s" % ("%1.3f" % v) for v in value]
 
 def main():
+    zephyr.configure_root_logger()
+    
     serial_port_dict = {"Darwin": "/dev/cu.BHBHT001931-iSerialPort1",
                         "Windows": 23}
     

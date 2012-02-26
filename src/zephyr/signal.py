@@ -2,6 +2,7 @@
 import time
 import datetime
 import collections
+import logging
 
 
 SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
@@ -141,9 +142,9 @@ class SignalCollector:
         if previous_sequence_number is not None:
             expected_sequence_number = (previous_sequence_number + 1) % 256
             if signal_packet.sequence_number != expected_sequence_number:
-                print "Invalid sequence number in stream %s: %d -> %d" % (signal_packet.type,
-                                                                          previous_sequence_number,
-                                                                          signal_packet.sequence_number)
+                logging.warning("Invalid sequence number in stream %s: %d -> %d",
+                                signal_packet.type, previous_sequence_number,
+                                signal_packet.sequence_number)
                 self.reset_signal_stream(signal_packet.type)
         
         self.sequence_numbers[signal_packet.type] = signal_packet.sequence_number

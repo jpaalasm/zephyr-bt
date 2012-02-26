@@ -2,6 +2,7 @@
 import threading
 import collections
 import time
+import logging
 
 
 class DelayedRealTimeStream(threading.Thread):
@@ -39,7 +40,7 @@ class DelayedRealTimeStream(threading.Thread):
                         self.callback(stream_name, delayed_value)
                         self.stream_progresses[stream_name] = stream_sample_index
                     else:
-                        print "%1.3f sec of data missing" % ((stream_sample_index - len(stream.signal_values)) / stream.samplerate)
+                        logging.warning("%1.3f sec of data missing", (stream_sample_index - len(stream.signal_values)) / stream.samplerate)
             
             
             for stream_name, stream in self.signal_collector.iterate_event_streams():
