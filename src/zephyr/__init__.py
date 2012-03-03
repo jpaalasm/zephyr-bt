@@ -14,7 +14,7 @@ def configure_root_logger():
     logger.addHandler(console_handler)
     
     log_file_path = os.path.join(os.path.expanduser("~"), "pyzephyr.log")
-    file_handler = logging.FileHandler(log_file_path)
+    file_handler = logging.FileHandler(log_file_path, mode="w")
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
