@@ -2,7 +2,7 @@
 import serial
 import time
 import platform
-import json
+import csv
 
 import zephyr.message
 import zephyr.protocol
@@ -22,8 +22,11 @@ def main():
     
     recording_time = 120.0
     
-    read_bytes_list = []
     chunks_timing = []
+    
+    data_file = file("../test_data/120-second-bt-stream.dat", "wb")
+    timing_file = file("../test_data/120-second-bt-stream-timing.csv", "wb")
+    timing_file_csv_writer = csv.writer(timing_file)
     
     while True:
         time_before = time.time()
@@ -32,19 +35,19 @@ def main():
         
         relative_previous_chunk_time = time_before - start_time
         
-        if delay > 0.01 and len(read_bytes_list):
-            chunks_timing.append((relative_previous_chunk_time, len(read_bytes_list)))
-            print chunks_timing[-1]
+        data_file_position = data_file.tell()
+        
+        if delay > 0.01 and data_file_position:
+            timing_file_csv_writer.writerow((relative_previous_chunk_time, data_file_position))
+            print relative_previous_chunk_time, data_file_position
         
         if relative_previous_chunk_time > recording_time:
             break
         
-        read_bytes_list.append(byte)
+        data_file.write(byte)
     
-    read_bytes = "".join(read_bytes_list)
-    
-    file("../test_data/120-second-bt-stream.dat", "wb").write(read_bytes)
-    json.dump(chunks_timing, file("../test_data/120-second-bt-stream-timing.json", "w"))
+    data_file.close()
+    timing_file.close()
 
 
 if __name__ == "__main__":

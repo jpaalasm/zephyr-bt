@@ -25,7 +25,7 @@ def main():
     
     try:
         zephyr.testing.simulate_signal_packets_from_file(data_dir + "/120-second-bt-stream.dat",
-                                                         data_dir + "/120-second-bt-stream-timing.json",
+                                                         data_dir + "/120-second-bt-stream-timing.csv",
                                                          stream_thread.handle_packet)
     finally:
         stream_thread.terminate()

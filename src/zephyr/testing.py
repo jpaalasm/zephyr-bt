@@ -1,8 +1,7 @@
 
 import time
-import json
+import csv
 import os
-import logging
 
 import zephyr.protocol
 import zephyr.signal
@@ -13,7 +12,7 @@ test_data_dir = os.path.join(os.path.split(os.path.split(os.path.split(__file__)
 
 def simulate_signal_packets_from_file(stream_data_path, timing_data_path, packet_handler, sleeping=True):
     input_file = open(stream_data_path, "rb")
-    timings = json.load(open(timing_data_path))
+    timings = csv.reader(open(timing_data_path))
     
     signal_receiver = zephyr.signal.SignalMessageParser(packet_handler)
     connection = zephyr.protocol.Protocol(input_file, signal_receiver.handle_message)
@@ -22,7 +21,10 @@ def simulate_signal_packets_from_file(stream_data_path, timing_data_path, packet
     
     bytes_read = 0
     
-    for chunk_timestamp, chunk_cumulative_byte_count in timings:
+    for chunk_timestamp_string, chunk_cumulative_byte_count_string in timings:
+        chunk_timestamp = float(chunk_timestamp_string)
+        chunk_cumulative_byte_count = int(chunk_cumulative_byte_count_string)
+        
         time_to_sleep = chunk_timestamp - (time.time() - start_time)
         
         if sleeping and time_to_sleep > 0:
