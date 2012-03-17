@@ -109,7 +109,7 @@ class SignalCollector:
             self.estimated_clock_difference = 0
     
     def get_message_end_timestamp(self, signal_packet):
-        temporal_message_length = len(signal_packet.signal_values) / signal_packet.samplerate
+        temporal_message_length = (len(signal_packet.signal_values) - 1) / signal_packet.samplerate
         return signal_packet.timestamp + temporal_message_length
     
     def initialize_event_stream(self, stream_name):
