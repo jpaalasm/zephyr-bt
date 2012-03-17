@@ -133,10 +133,11 @@ class SignalCollector:
     def handle_packet(self, signal_packet):
         if self.clock_difference_correction:
             message_end_timestamp = self.get_message_end_timestamp(signal_packet)
-            clock_difference_estimate = message_end_timestamp - time.time()
+            zephyr_clock_ahead_seconds = message_end_timestamp - time.time()
             
-            if self.estimated_clock_difference is None or self.estimated_clock_difference < clock_difference_estimate:
-                self.estimated_clock_difference = clock_difference_estimate
+            if self.estimated_clock_difference is None or zephyr_clock_ahead_seconds > self.estimated_clock_difference:
+                self.estimated_clock_difference = zephyr_clock_ahead_seconds
+                logging.debug("Clock difference estimate set to: %f", zephyr_clock_ahead_seconds)
         
         previous_sequence_number = self.sequence_numbers.get(signal_packet.type)
         if previous_sequence_number is not None:

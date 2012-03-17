@@ -12,7 +12,7 @@ class DelayedRealTimeStream(threading.Thread):
         self.callback = callback
         self.delay = delay
         
-        self.stream_progresses = collections.defaultdict(lambda: 0)
+        self.stream_output_positions = collections.defaultdict(lambda: 0)
         
         self.terminate_requested = False
     
@@ -32,25 +32,25 @@ class DelayedRealTimeStream(threading.Thread):
             for stream_name, stream in self.signal_collector.iterate_signal_streams():
                 stream_sample_index = int((delayed_current_time - stream.start_timestamp) * stream.samplerate)
                 
-                stream_progress = self.stream_progresses[stream_name]
+                output_position = self.stream_output_positions[stream_name]
                 
-                if stream_sample_index > stream_progress:
+                if stream_sample_index > output_position:
                     if stream_sample_index < len(stream.signal_values):
                         delayed_value = stream.signal_values[stream_sample_index]
                         self.callback(stream_name, delayed_value)
-                        self.stream_progresses[stream_name] = stream_sample_index
+                        self.stream_output_positions[stream_name] = stream_sample_index
                     else:
-                        logging.warning("%1.3f sec of data missing", (stream_sample_index - len(stream.signal_values)) / stream.samplerate)
-            
+                        missing_seconds = (stream_sample_index - len(stream.signal_values)) / stream.samplerate
+                        logging.warning("%s: %1.3f sec of data missing (%d %d)", stream_name, missing_seconds, stream_sample_index, output_position)
             
             for stream_name, stream in self.signal_collector.iterate_event_streams():
-                stream_progress = self.stream_progresses[stream_name]
+                output_position = self.stream_output_positions[stream_name]
                 
-                if len(stream) > stream_progress:
-                    event_timestamp, event_value = stream[stream_progress]
+                if len(stream) > output_position:
+                    event_timestamp, event_value = stream[output_position]
                     
                     if event_timestamp <= delayed_current_time:
                         self.callback(stream_name, event_value)
-                        self.stream_progresses[stream_name] += 1
+                        self.stream_output_positions[stream_name] += 1
             
             time.sleep(0.01)
