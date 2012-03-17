@@ -81,7 +81,6 @@ class SignalMessageParser:
     def handle_rr_payload(self, signal_bytes):
         signal_values = unpack_bit_packed_values(signal_bytes, 16, True)
         signal_values = [value / 1000.0 for value in signal_values]
-        
         return signal_values
     
     def handle_accelerometer_payload(self, signal_bytes):
@@ -100,13 +99,9 @@ class SignalCollector:
     def __init__(self, clock_difference_correction=True):
         self._signal_streams = {}
         self._event_streams = {}
+        self._clock_difference_deques = collections.defaultdict(lambda: collections.deque(maxlen=60))
         self.sequence_numbers = {}
         self.clock_difference_correction = clock_difference_correction
-        
-        if self.clock_difference_correction:
-            self.estimated_clock_difference = None
-        else:
-            self.estimated_clock_difference = 0
     
     def get_message_end_timestamp(self, signal_packet):
         temporal_message_length = (len(signal_packet.signal_values) - 1) / signal_packet.samplerate
@@ -131,14 +126,6 @@ class SignalCollector:
         del self._signal_streams[stream_name]
     
     def handle_packet(self, signal_packet):
-        if self.clock_difference_correction:
-            message_end_timestamp = self.get_message_end_timestamp(signal_packet)
-            zephyr_clock_ahead_seconds = message_end_timestamp - time.time()
-            
-            if self.estimated_clock_difference is None or zephyr_clock_ahead_seconds > self.estimated_clock_difference:
-                self.estimated_clock_difference = zephyr_clock_ahead_seconds
-                logging.debug("Clock difference estimate set to: %f", zephyr_clock_ahead_seconds)
-        
         previous_sequence_number = self.sequence_numbers.get(signal_packet.type)
         if previous_sequence_number is not None:
             expected_sequence_number = (previous_sequence_number + 1) % 256
@@ -155,10 +142,22 @@ class SignalCollector:
         
         signal_stream = self._signal_streams[signal_packet.type]
         signal_stream.signal_values.extend(signal_packet.signal_values)
+        
+        if self.clock_difference_correction:
+            signal_stream_position = signal_stream.start_timestamp + (len(signal_stream.signal_values) - 1) / signal_stream.samplerate
+            zephyr_clock_ahead = signal_stream_position - time.time()
+            self._clock_difference_deques[signal_packet.type].append(zephyr_clock_ahead)
     
     def get_signal_stream(self, stream_type):
         signal_stream = self._signal_streams[stream_type]
-        signal_stream = SignalStream(signal_stream.start_timestamp - self.estimated_clock_difference, signal_stream.samplerate, signal_stream.signal_values)
+        
+        if self.clock_difference_correction:
+            zephyr_clock_ahead_values = self._clock_difference_deques[stream_type]
+            zephyr_clock_ahead_estimate = sum(zephyr_clock_ahead_values) / len(zephyr_clock_ahead_values)
+        else:
+            zephyr_clock_ahead_estimate = 0.0
+        
+        signal_stream = SignalStream(signal_stream.start_timestamp - zephyr_clock_ahead_estimate, signal_stream.samplerate, signal_stream.signal_values)
         return signal_stream
     
     def get_event_stream(self, stream_type):
