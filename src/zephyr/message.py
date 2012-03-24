@@ -1,6 +1,7 @@
 
 import logging
 
+
 def crc_8_digest(values):
     crc = 0
     
@@ -25,7 +26,6 @@ def create_message_frame(message_id, payload):
     
     message_frame = "".join(chr(byte) for byte in message_bytes)
     return message_frame
-    
 
 
 class MessageFrame:
@@ -123,4 +123,3 @@ class MessageFrameParser:
         self.message = None
         
         self.handler = self.handle_stx
-    
