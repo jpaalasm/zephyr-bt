@@ -54,13 +54,13 @@ class Protocol:
     def read_and_handle_bytes(self, num_bytes):
         data_string = self.connection.read(num_bytes)
         self.message_parser.parse_data(data_string)
+        self.message_logger(data_string)
         return data_string
     
     def read_and_handle_forever(self):
         try:
             while True:
-                bytes = self.read_and_handle_bytes(1)
-                self.message_logger(bytes)
+                self.read_and_handle_bytes(1)
         except KeyboardInterrupt:
             logging.info("Received Ctrl-C, exiting")
     
