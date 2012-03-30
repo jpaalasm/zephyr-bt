@@ -11,11 +11,15 @@ test_data_dir = os.path.join(os.path.split(os.path.split(os.path.split(__file__)
 
 
 def simulate_signal_packets_from_file(stream_data_path, timing_data_path, packet_handler, sleeping=True):
+    signal_receiver = zephyr.signal.SignalMessageParser(packet_handler)
+    simulate_packets_from_file(stream_data_path, timing_data_path, signal_receiver.handle_message, sleeping)
+
+
+def simulate_packets_from_file(stream_data_path, timing_data_path, packet_handler, sleeping=True):
     input_file = open(stream_data_path, "rb")
     timings = csv.reader(open(timing_data_path))
     
-    signal_receiver = zephyr.signal.SignalMessageParser(packet_handler)
-    connection = zephyr.protocol.Protocol(input_file, signal_receiver.handle_message)
+    connection = zephyr.protocol.Protocol(input_file, packet_handler)
     
     start_time = time.time()
     
