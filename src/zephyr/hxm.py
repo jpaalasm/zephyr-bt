@@ -25,15 +25,20 @@ import logging
 import collections
 
 
-HxMMessage = collections.namedtuple("HxMMessage", ["heart_rate", "heartbeat_number", "heartbeat_timestamps",
-                                                   "distance", "speed", "strides"])
+HxMMessage = collections.namedtuple("HxMMessage", ["heart_rate", "heartbeat_number",
+                                                   "heartbeat_timestamps", "distance",
+                                                   "speed", "strides"])
 
 
 def parse_uint16_values_from_bytes(byte_values):
-    byte_pair_list = zip(byte_values[0::2], byte_values[1::2])
+    assert not len(byte_values) % 2
     
-    uint16_values = [(byte1 + (byte2 << 8)) for byte1, byte2 in byte_pair_list]
-    return uint16_values
+    byte_iterator = iter(byte_values)
+    
+    while True:
+        byte1 = byte_iterator.next()
+        byte2 = byte_iterator.next()
+        yield byte1 + (byte2 << 8)
 
 
 class HxMMessageParser:
@@ -52,7 +57,7 @@ class HxMMessageParser:
         
         movement_data_bytes = payload[47:53]
         
-        distance, speed, strides = parse_uint16_values_from_bytes(movement_data_bytes)
+        distance, speed, strides = tuple(parse_uint16_values_from_bytes(movement_data_bytes))
         
         distance = distance / 16.0
         speed = speed / 256.0
