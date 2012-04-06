@@ -25,12 +25,12 @@ def main():
     
     signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
     signal_receiver = zephyr.signal.SignalMessageParser(signal_collector.handle_packet)
-    protocol = zephyr.protocol.Protocol(ser, signal_receiver.handle_message)
+    protocol = zephyr.protocol.BioHarnessProtocol(ser, signal_receiver.handle_message)
     
     stream_thread = zephyr.delayed_stream.DelayedRealTimeStream(signal_collector, callback)
     stream_thread.start()
     
-    protocol.enable_signals()
+    protocol.enable_periodic_packets()
     protocol.read_and_handle_forever()
     
     stream_thread.terminate()

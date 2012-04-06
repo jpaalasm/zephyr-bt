@@ -15,8 +15,8 @@ def main():
     ser = serial.Serial(serial_port)
     
     callback = lambda x: None
-    protocol = zephyr.protocol.Protocol(ser, callback, "../test_data/120-second-bt-stream")
-    protocol.enable_signals()
+    protocol = zephyr.protocol.BioHarnessProtocol(ser, callback, "../test_data/120-second-bt-stream")
+    protocol.enable_periodic_packets()
     
     start_time = time.time()
     while time.time() < start_time + 120:

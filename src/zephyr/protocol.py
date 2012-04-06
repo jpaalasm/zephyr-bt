@@ -63,10 +63,27 @@ class Protocol:
                 self.read_and_handle_bytes(1)
         except KeyboardInterrupt:
             logging.info("Received Ctrl-C, exiting")
-    
-    def enable_signals(self):
-        self.send_message(0x15, [1])
+
+
+class BioHarnessProtocol(Protocol):
+    def enable_ecg_waveform(self):
         self.send_message(0x16, [1])
+    
+    def enable_breathing_waveform(self):
+        self.send_message(0x15, [1])
+    
+    def enable_rr_data(self):
         self.send_message(0x19, [1])
+    
+    def enable_accelerometer_waveform(self):
         self.send_message(0x1E, [1])
     
+    def set_summary_packet_transmit_interval_to_one_second(self):
+        self.send_message(0xBD, [1, 0])
+    
+    def enable_periodic_packets(self):
+        self.enable_ecg_waveform()
+        self.enable_breathing_waveform()
+        self.enable_rr_data()
+        self.enable_accelerometer_waveform()
+        self.set_summary_packet_transmit_interval_to_one_second()
