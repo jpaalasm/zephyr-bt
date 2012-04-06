@@ -11,3 +11,14 @@ def crc_8_digest(values):
                 crc = (crc >> 1)
     
     return crc
+
+
+def parse_uint16_values_from_bytes(byte_values):
+    assert not len(byte_values) % 2
+    
+    byte_iterator = iter(byte_values)
+    
+    while True:
+        byte1 = byte_iterator.next()
+        byte2 = byte_iterator.next()
+        yield byte1 + (byte2 << 8)
