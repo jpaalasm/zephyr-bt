@@ -1,12 +1,12 @@
 
 import time
-import datetime
 import collections
 import logging
 
+import zephyr.util
+import zephyr.message
 
 SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
-SignalPacket = collections.namedtuple("SignalPacket", ["type", "timestamp", "samplerate", "signal_values", "sequence_number"])
 
 
 def unpack_bit_packed_values(data_bytes, value_nbits, twos_complement):
@@ -44,20 +44,6 @@ class SignalMessageParser:
                              0x24: (self.handle_rr_payload, "rr", 18.0),
                              0x25: (self.handle_accelerometer_payload, "acceleration", 50.0)}
     
-    def parse_timestamp(self, timestamp_bytes):
-        year = timestamp_bytes[0] + (timestamp_bytes[1] << 8)
-        month = timestamp_bytes[2]
-        day = timestamp_bytes[3]
-        day_milliseconds = (timestamp_bytes[4] +
-                            (timestamp_bytes[5] << 8) +
-                            (timestamp_bytes[6] << 16) +
-                            (timestamp_bytes[7] << 24))
-        
-        date = datetime.date(year=year, month=month, day=day)
-        
-        timestamp = time.mktime(date.timetuple()) + day_milliseconds / 1000.0
-        return timestamp
-    
     def handle_message(self, message):
         if message.message_id in self.signal_types:
             message_handler, signal_code, samplerate = self.signal_types[message.message_id]
@@ -66,11 +52,11 @@ class SignalMessageParser:
             timestamp_bytes = message.payload[1:9]
             signal_bytes = message.payload[9:]
             
-            message_timestamp = self.parse_timestamp(timestamp_bytes)
+            message_timestamp = zephyr.util.parse_timestamp(timestamp_bytes)
             
             signal_values = message_handler(signal_bytes)
             
-            signal_packet = SignalPacket(signal_code, message_timestamp, samplerate, signal_values, sequence_number)
+            signal_packet = zephyr.message.SignalPacket(signal_code, message_timestamp, samplerate, signal_values, sequence_number)
             self.callback(signal_packet)
     
     def handle_10_bit_signal(self, signal_bytes):

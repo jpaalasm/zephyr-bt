@@ -8,6 +8,9 @@ HxMMessage = collections.namedtuple("HxMMessage", ["heart_rate", "heartbeat_numb
                                                    "heartbeat_timestamps", "distance",
                                                    "speed", "strides"])
 
+SignalPacket = collections.namedtuple("SignalPacket", ["type", "timestamp", "samplerate",
+                                                       "signal_values", "sequence_number"])
+
 
 def parse_hxm_message(payload):
     heart_rate, heartbeat_number = payload[9:11]
