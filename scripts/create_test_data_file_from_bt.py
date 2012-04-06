@@ -18,7 +18,9 @@ def main():
     protocol = zephyr.protocol.Protocol(ser, callback, "../test_data/120-second-bt-stream")
     protocol.enable_signals()
     
-    protocol.read_and_handle_forever()
+    start_time = time.time()
+    while time.time() < start_time + 120:
+        protocol.read_and_handle_bytes(1)
 
 
 if __name__ == "__main__":
