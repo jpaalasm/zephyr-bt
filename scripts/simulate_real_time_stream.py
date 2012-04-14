@@ -21,7 +21,7 @@ def callback(value_name, value):
 def main():
     zephyr.configure_root_logger()
     
-    signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
+    signal_collector = zephyr.rr_event.SignalCollectorWithEventProcessing()
     
     stream_thread = zephyr.delayed_stream.DelayedRealTimeStream(signal_collector, callback)
     stream_thread.start()

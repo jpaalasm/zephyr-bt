@@ -26,7 +26,7 @@ def main():
     serial_port = serial_port_dict[platform.system()]
     ser = serial.Serial(serial_port)
     
-    signal_collector = zephyr.rr_event.SignalCollectorWithRRProcessing()
+    signal_collector = zephyr.rr_event.SignalCollectorWithEventProcessing()
     signal_receiver = zephyr.signal.SignalMessageParser(signal_collector.handle_packet)
     protocol = zephyr.protocol.BioHarnessProtocol(ser, signal_receiver.handle_message)
     

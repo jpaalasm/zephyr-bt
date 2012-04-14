@@ -4,7 +4,7 @@ import zephyr.signal
 def sign(value):
     return cmp(value, 0)
 
-class SignalCollectorWithRRProcessing(zephyr.signal.SignalCollector):
+class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
     def __init__(self, clock_difference_correction=True):
         zephyr.signal.SignalCollector.__init__(self, clock_difference_correction)
         self.initialize_event_stream("rr_event")
