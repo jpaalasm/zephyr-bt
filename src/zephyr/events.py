@@ -17,8 +17,7 @@ class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
         self.initialize_event_stream("rr_event")
     
     def initialize_event_stream(self, stream_name):
-        all_stream_names = self._event_streams.keys() + self._signal_streams.keys()
-        assert stream_name not in all_stream_names
+        assert stream_name not in self._event_streams
         self._event_streams[stream_name] = []
     
     def append_to_event_stream(self, stream_name, value):
