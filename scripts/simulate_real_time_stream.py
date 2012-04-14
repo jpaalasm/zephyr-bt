@@ -2,10 +2,14 @@
 import threading
 import time
 import collections
+import numpy
+import matplotlib.pyplot
 
 import zephyr.rr_event
 import zephyr.testing
 import zephyr.delayed_stream
+import zephyr.message
+import zephyr.visualization
 
 
 def callback(value_name, value):
@@ -13,9 +17,6 @@ def callback(value_name, value):
         print "                      ",
         print "%020s %s" % (value_name, value)
 
-def cb(m):
-    if m.message_id == 0x2B:
-        print m.payload
 
 def main():
     zephyr.configure_root_logger()
@@ -27,13 +28,19 @@ def main():
     
     data_dir = zephyr.testing.test_data_dir
     
-    try:
-        zephyr.testing.simulate_packets_from_file(data_dir + "/120-second-bt-stream.dat",
-                                                  data_dir + "/120-second-bt-stream-timing.csv",
-                                                  cb)
-    finally:
-        stream_thread.terminate()
-        stream_thread.join()
+    simulation_thread = threading.Thread(target=zephyr.testing.simulate_signal_packets_from_file,
+                                         args=(data_dir + "/120-second-bt-stream.dat",
+                                               data_dir + "/120-second-bt-stream-timing.csv",
+                                               stream_thread.handle_packet))
+    simulation_thread.start()
+    
+    visualization = zephyr.visualization.VisualizationWindow(signal_collector)
+    visualization.run()
+    
+    simulation_thread.join()
+    
+    stream_thread.terminate()
+    stream_thread.join()
 
 
 if __name__ == "__main__":

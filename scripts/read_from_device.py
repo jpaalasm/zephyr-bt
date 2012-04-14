@@ -2,6 +2,7 @@
 import serial
 import time
 import platform
+import threading
 
 import zephyr.message
 import zephyr.protocol
@@ -9,6 +10,8 @@ import zephyr.signal
 import zephyr.rr_event
 import zephyr.delayed_stream
 import zephyr.testing
+import zephyr.visualization
+
 
 def callback(value_name, value):
     if value_name == "acceleration":
@@ -18,7 +21,7 @@ def main():
     zephyr.configure_root_logger()
     
     serial_port_dict = {"Darwin": "/dev/cu.BHBHT001931-iSerialPort1",
-                        "Windows": 23}
+                        "Windows": 25}
     
     serial_port = serial_port_dict[platform.system()]
     ser = serial.Serial(serial_port)
@@ -31,12 +34,15 @@ def main():
     stream_thread.start()
     
     protocol.enable_periodic_packets()
-    protocol.read_and_handle_forever()
+    
+    threading.Thread(target=protocol.read_and_handle_forever).start()
+    
+    visualization = zephyr.visualization.VisualizationWindow(signal_collector)
+    visualization.run()
     
     stream_thread.terminate()
     stream_thread.join()
     
-    zephyr.testing.visualize_measurements(signal_collector)
 
 
 if __name__ == "__main__":
