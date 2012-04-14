@@ -31,6 +31,8 @@ class SignalCollector:
         self._clock_difference_deques = collections.defaultdict(lambda: collections.deque(maxlen=60))
         self.sequence_numbers = {}
         self.clock_difference_correction = clock_difference_correction
+        
+        self.summary_packets = []
     
     def get_message_end_timestamp(self, signal_packet):
         temporal_message_length = (len(signal_packet.signal_values) - 1) / signal_packet.samplerate
@@ -55,27 +57,33 @@ class SignalCollector:
         del self._signal_streams[stream_name]
     
     def handle_packet(self, signal_packet):
-        previous_sequence_number = self.sequence_numbers.get(signal_packet.type)
-        if previous_sequence_number is not None:
-            expected_sequence_number = (previous_sequence_number + 1) % 256
-            if signal_packet.sequence_number != expected_sequence_number:
-                logging.warning("Invalid sequence number in stream %s: %d -> %d",
-                                signal_packet.type, previous_sequence_number,
-                                signal_packet.sequence_number)
-                self.reset_signal_stream(signal_packet.type)
+        if isinstance(signal_packet, zephyr.message.SummaryMessage):
+            self.summary_packets.append(signal_packet)
         
-        self.sequence_numbers[signal_packet.type] = signal_packet.sequence_number
-        
-        if signal_packet.type not in self._signal_streams:
-            self.initialize_signal_stream(signal_packet)
-        
-        signal_stream = self._signal_streams[signal_packet.type]
-        signal_stream.signal_values.extend(signal_packet.signal_values)
-        
-        if self.clock_difference_correction:
-            signal_stream_position = signal_stream.start_timestamp + (len(signal_stream.signal_values) - 1) / signal_stream.samplerate
-            zephyr_clock_ahead = signal_stream_position - time.time()
-            self._clock_difference_deques[signal_packet.type].append(zephyr_clock_ahead)
+        else:
+            assert isinstance(signal_packet, zephyr.message.SignalPacket)
+            
+            previous_sequence_number = self.sequence_numbers.get(signal_packet.type)
+            if previous_sequence_number is not None:
+                expected_sequence_number = (previous_sequence_number + 1) % 256
+                if signal_packet.sequence_number != expected_sequence_number:
+                    logging.warning("Invalid sequence number in stream %s: %d -> %d",
+                                    signal_packet.type, previous_sequence_number,
+                                    signal_packet.sequence_number)
+                    self.reset_signal_stream(signal_packet.type)
+            
+            self.sequence_numbers[signal_packet.type] = signal_packet.sequence_number
+            
+            if signal_packet.type not in self._signal_streams:
+                self.initialize_signal_stream(signal_packet)
+            
+            signal_stream = self._signal_streams[signal_packet.type]
+            signal_stream.signal_values.extend(signal_packet.signal_values)
+            
+            if self.clock_difference_correction:
+                signal_stream_position = signal_stream.start_timestamp + (len(signal_stream.signal_values) - 1) / signal_stream.samplerate
+                zephyr_clock_ahead = signal_stream_position - time.time()
+                self._clock_difference_deques[signal_packet.type].append(zephyr_clock_ahead)
     
     def get_signal_stream(self, stream_type):
         signal_stream = self._signal_streams[stream_type]
