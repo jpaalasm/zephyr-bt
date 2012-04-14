@@ -3,82 +3,25 @@ import time
 import collections
 import logging
 
-import zephyr.util
 import zephyr.message
 
 SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
 
 
-def unpack_bit_packed_values(data_bytes, value_nbits, twos_complement):
-    total_bit_count = len(data_bytes) * 8
-    value_count = total_bit_count / value_nbits
-    
-    value_bit_mask = 2**value_nbits - 1
-    represented_value_count = 2**value_nbits
-    half_represented_value_count = represented_value_count / 2
-    
-    unpacked_values = []
-    
-    for value_i in range(value_count):
-        value_start_bit = value_i * value_nbits
-        value_start_byte = value_start_bit / 8
-        bit_offset_from_start_byte = value_start_bit % 8
-        
-        unpacked_value = data_bytes[value_start_byte] + (data_bytes[value_start_byte + 1] << 8)
-        unpacked_value >>= bit_offset_from_start_byte
-        unpacked_value &= value_bit_mask
-        
-        if twos_complement and unpacked_value >= half_represented_value_count:
-            unpacked_value = unpacked_value - represented_value_count
-        
-        unpacked_values.append(unpacked_value)
-    
-    return unpacked_values
-
 class SignalMessageParser:
     def __init__(self, callback):
         self.callback = callback
+    
+    def handle_message(self, message_frame):
+        message_id = message_frame.message_id
         
-        self.signal_types = {0x21: (self.handle_10_bit_signal, "breathing", 18.0),
-                             0x22: (self.handle_10_bit_signal, "ecg", 250.0),
-                             0x24: (self.handle_rr_payload, "rr", 18.0),
-                             0x25: (self.handle_accelerometer_payload, "acceleration", 50.0)}
-    
-    def handle_message(self, message):
-        if message.message_id in self.signal_types:
-            message_handler, signal_code, samplerate = self.signal_types[message.message_id]
-            
-            sequence_number = message.payload[0]
-            timestamp_bytes = message.payload[1:9]
-            signal_bytes = message.payload[9:]
-            
-            message_timestamp = zephyr.util.parse_timestamp(timestamp_bytes)
-            
-            signal_values = message_handler(signal_bytes)
-            
-            signal_packet = zephyr.message.SignalPacket(signal_code, message_timestamp, samplerate, signal_values, sequence_number)
-            self.callback(signal_packet)
-    
-    def handle_10_bit_signal(self, signal_bytes):
-        signal_values = unpack_bit_packed_values(signal_bytes, 10, False)
-        signal_values = [value - 512 for value in signal_values]
-        return signal_values
-    
-    def handle_rr_payload(self, signal_bytes):
-        signal_values = unpack_bit_packed_values(signal_bytes, 16, True)
-        signal_values = [value / 1000.0 for value in signal_values]
-        return signal_values
-    
-    def handle_accelerometer_payload(self, signal_bytes):
-        interleaved_signal_values = self.handle_10_bit_signal(signal_bytes)
-        
-        # 83 correspond to one g in the 14-bit acceleration
-        # signal, and this of 1/4 of that
-        one_g_value = 20.75
-        interleaved_signal_values = [value / one_g_value for value in interleaved_signal_values]
-        
-        signal_values = zip(interleaved_signal_values[0::3], interleaved_signal_values[1::3], interleaved_signal_values[2::3])
-        return signal_values
+        if message_id in zephyr.message.SIGNAL_MESSAGE_TYPES:
+            message = zephyr.message.parse_signal_packet(message_frame)
+            self.callback(message)
+        elif message_id in zephyr.message.OTHER_MESSAGE_TYPES:
+            handler = zephyr.message.OTHER_MESSAGE_TYPES[message_id]
+            message = handler(message_frame.payload)
+            self.callback(message)
 
 
 class SignalCollector:

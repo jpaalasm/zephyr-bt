@@ -4,6 +4,7 @@ import collections
 import time
 import logging
 
+import zephyr.message
 
 class DelayedRealTimeStream(threading.Thread):
     def __init__(self, signal_collector, callback, delay=2.0):
@@ -20,7 +21,8 @@ class DelayedRealTimeStream(threading.Thread):
         self.terminate_requested = True
     
     def handle_packet(self, signal_packet):
-        self.signal_collector.handle_packet(signal_packet)
+        if isinstance(signal_packet, zephyr.message.SignalPacket):
+            self.signal_collector.handle_packet(signal_packet)
     
     def run(self):
         # Wait so that all signal streams have been initialized

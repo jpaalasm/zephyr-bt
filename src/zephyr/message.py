@@ -73,3 +73,52 @@ def parse_summary_packet(payload):
                              heart_rate_confidence)
     
     return message
+
+
+def parse_signal_packet(message):
+    sequence_number = message.payload[0]
+    timestamp_bytes = message.payload[1:9]
+    signal_bytes = message.payload[9:]
+    
+    sample_parser, signal_code, samplerate = SIGNAL_MESSAGE_TYPES[message.message_id]
+    
+    message_timestamp = zephyr.util.parse_timestamp(timestamp_bytes)
+    signal_values = sample_parser(signal_bytes)
+    
+    signal_packet = zephyr.message.SignalPacket(signal_code, message_timestamp, samplerate, signal_values, sequence_number)
+    return signal_packet
+
+
+def parse_10_bit_samples(signal_bytes):
+    signal_values = zephyr.util.unpack_bit_packed_values(signal_bytes, 10, False)
+    signal_values = [value - 512 for value in signal_values]
+    return signal_values
+
+
+def parse_16_bit_samples(signal_bytes):
+    signal_values = zephyr.util.unpack_bit_packed_values(signal_bytes, 16, True)
+    signal_values = [value * 0.001 for value in signal_values]
+    return signal_values
+
+
+def parse_accelerometer_samples(signal_bytes):
+    interleaved_signal_values = parse_10_bit_samples(signal_bytes)
+    
+    # 83 correspond to one g in the 14-bit acceleration
+    # signal, and this of 1/4 of that
+    one_g_value = 20.75
+    interleaved_signal_values = [value / one_g_value for value in interleaved_signal_values]
+    
+    signal_values = zip(interleaved_signal_values[0::3],
+                        interleaved_signal_values[1::3],
+                        interleaved_signal_values[2::3])
+    return signal_values
+
+
+SIGNAL_MESSAGE_TYPES = {0x21: (parse_10_bit_samples, "breathing", 18.0),
+                        0x22: (parse_10_bit_samples, "ecg", 250.0),
+                        0x24: (parse_16_bit_samples, "rr", 18.0),
+                        0x25: (parse_accelerometer_samples, "acceleration", 50.0)}
+
+OTHER_MESSAGE_TYPES = {0x2B: parse_summary_packet}
+
