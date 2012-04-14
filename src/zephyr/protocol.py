@@ -15,7 +15,7 @@ class MessageDataLogger:
         self.start_time = None
         self.time_before = None
     
-    def __call__(self, bytes):
+    def __call__(self, stream_bytes):
         if self.start_time is None:
             now = time.time()
             self.start_time = now
@@ -31,7 +31,7 @@ class MessageDataLogger:
             self.timing_file_csv_writer.writerow((relative_previous_chunk_time, data_file_position))
             print relative_previous_chunk_time, data_file_position
         
-        self.data_file.write(bytes)
+        self.data_file.write(stream_bytes)
         
         self.time_before = time.time()
 
