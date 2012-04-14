@@ -39,9 +39,9 @@ class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
         if isinstance(signal_packet, zephyr.message.SignalPacket) and signal_packet.type == "rr":
             signal_stream = self.get_signal_stream("rr")
             
-            received_values_before_this_packet = len(signal_stream.signal_values) - len(signal_packet.signal_values)
+            samples_received_before_this_packet = len(signal_stream.signal_values) - len(signal_packet.signal_values)
             
-            for sample_index, rr_value in enumerate(signal_packet.signal_values, start=received_values_before_this_packet):
+            for sample_index, rr_value in enumerate(signal_packet.signal_values, start=samples_received_before_this_packet):
                 rr_value_sign = sign(rr_value)
                 if rr_value_sign != self.latest_value_sign:
                     rr_timestamp = sample_index / signal_stream.samplerate + signal_stream.start_timestamp
