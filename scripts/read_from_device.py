@@ -7,7 +7,7 @@ import threading
 import zephyr.message
 import zephyr.protocol
 import zephyr.signal
-import zephyr.rr_event
+import zephyr.events
 import zephyr.delayed_stream
 import zephyr.testing
 import zephyr.visualization
@@ -26,7 +26,7 @@ def main():
     serial_port = serial_port_dict[platform.system()]
     ser = serial.Serial(serial_port)
     
-    signal_collector = zephyr.rr_event.SignalCollectorWithEventProcessing()
+    signal_collector = zephyr.events.SignalCollectorWithEventProcessing()
     signal_receiver = zephyr.signal.SignalMessageParser(signal_collector.handle_packet)
     protocol = zephyr.protocol.BioHarnessProtocol(ser, signal_receiver.handle_message)
     

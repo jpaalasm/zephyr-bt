@@ -27,42 +27,26 @@ class SignalMessageParser:
 class SignalCollector:
     def __init__(self, clock_difference_correction=True):
         self._signal_streams = {}
-        self._event_streams = {}
-        self._clock_difference_deques = collections.defaultdict(lambda: collections.deque(maxlen=60))
         self.sequence_numbers = {}
         self.clock_difference_correction = clock_difference_correction
         
-        self.summary_packets = []
+        self._clock_difference_deques = collections.defaultdict(lambda: collections.deque(maxlen=60))
     
     def get_message_end_timestamp(self, signal_packet):
         temporal_message_length = (len(signal_packet.signal_values) - 1) / signal_packet.samplerate
         return signal_packet.timestamp + temporal_message_length
     
-    def initialize_event_stream(self, stream_name):
-        all_stream_names = self._event_streams.keys() + self._signal_streams.keys()
-        assert stream_name not in all_stream_names
-        self._event_streams[stream_name] = []
-    
-    def append_to_event_stream(self, stream_name, value):
-        self._event_streams[stream_name].append(value)
-    
     def initialize_signal_stream(self, signal_packet):
-        all_stream_names = self._event_streams.keys() + self._signal_streams.keys()
-        assert signal_packet.type not in all_stream_names
-        
         signal_stream = SignalStream(signal_packet.timestamp, signal_packet.samplerate, [])
+        
+        assert signal_packet.type not in self._signal_streams
         self._signal_streams[signal_packet.type] = signal_stream
     
     def reset_signal_stream(self, stream_name):
         del self._signal_streams[stream_name]
     
     def handle_packet(self, signal_packet):
-        if isinstance(signal_packet, zephyr.message.SummaryMessage):
-            self.summary_packets.append(signal_packet)
-        
-        else:
-            assert isinstance(signal_packet, zephyr.message.SignalPacket)
-            
+        if isinstance(signal_packet, zephyr.message.SignalPacket):
             previous_sequence_number = self.sequence_numbers.get(signal_packet.type)
             if previous_sequence_number is not None:
                 expected_sequence_number = (previous_sequence_number + 1) % 256
@@ -97,13 +81,6 @@ class SignalCollector:
         signal_stream = SignalStream(signal_stream.start_timestamp - zephyr_clock_ahead_estimate, signal_stream.samplerate, signal_stream.signal_values)
         return signal_stream
     
-    def get_event_stream(self, stream_type):
-        event_stream = self._event_streams[stream_type]
-        return event_stream
-    
     def iterate_signal_streams(self):
         for stream_type in self._signal_streams.keys():
             yield stream_type, self.get_signal_stream(stream_type)
-    
-    def iterate_event_streams(self):
-        return self._event_streams.iteritems()

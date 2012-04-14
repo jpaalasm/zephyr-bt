@@ -5,7 +5,7 @@ import collections
 import numpy
 import matplotlib.pyplot
 
-import zephyr.rr_event
+import zephyr.events
 import zephyr.testing
 import zephyr.delayed_stream
 import zephyr.message
@@ -21,7 +21,7 @@ def callback(value_name, value):
 def main():
     zephyr.configure_root_logger()
     
-    signal_collector = zephyr.rr_event.SignalCollectorWithEventProcessing()
+    signal_collector = zephyr.events.SignalCollectorWithEventProcessing()
     
     stream_thread = zephyr.delayed_stream.DelayedRealTimeStream(signal_collector, callback)
     stream_thread.start()
