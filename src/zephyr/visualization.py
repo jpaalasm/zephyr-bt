@@ -13,7 +13,7 @@ class VisualizationWindow:
         def create_empty_line(ax_index, *args):
             return self.axes[ax_index].plot([], [], *args)[0]
         
-        self.acceleration_lines = [create_empty_line(0) for i in range(3)]
+        self.acceleration_lines = [create_empty_line(0), create_empty_line(0), create_empty_line(0)]
         self.breathing_line = create_empty_line(1)
         self.ecg_line = create_empty_line(2)
         self.heart_rate_line = create_empty_line(3, "+")
@@ -24,9 +24,11 @@ class VisualizationWindow:
         self.axes[2].set_ylim((-500, 500))
         self.axes[3].set_ylim((0, 120))
         self.axes[4].set_ylim((0, 2))
+        
+        self.stop_updating_requested = False
     
     def update_plots(self):
-        while True:
+        while not self.stop_updating_requested:
             for stream_name, stream_data in self.signal_collector.iterate_signal_streams():
                 start_timestamp, samplerate, signal_values = stream_data
                 
@@ -73,7 +75,9 @@ class VisualizationWindow:
             matplotlib.pyplot.draw()
             time.sleep(0.2)
     
-    def run(self):
+    def show(self):
         threading.Thread(target=self.update_plots).start()
         
         matplotlib.pyplot.show()
+        
+        self.stop_updating_requested = True
