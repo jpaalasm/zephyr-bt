@@ -12,7 +12,7 @@ class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
     def __init__(self, clock_difference_correction=True):
         zephyr.signal.SignalCollector.__init__(self, clock_difference_correction)
         
-        self.latest_value_sign = 0
+        self.latest_rr_value_sign = 0
         self._event_streams = {}
         
         self.initialize_event_stream("heartbeat_interval")
@@ -38,9 +38,9 @@ class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
         zephyr.signal.SignalCollector.handle_packet(self, message)
         
         if isinstance(message, zephyr.message.SummaryMessage):
-            clock_difference = message.timestamp - time.time()
+            message_clock_difference = message.timestamp - time.time()
             
-            self.clock_difference_correction.append_clock_difference_value("summary", clock_difference)
+            self.clock_difference_correction.append_clock_difference_value("summary", message_clock_difference)
             clock_difference_estimation = self.clock_difference_correction.get_estimate("summary")
             
             corrected_timestamp = message.timestamp - clock_difference_estimation
@@ -54,7 +54,7 @@ class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
             
             for rr_timestamp, rr_value in self.iterate_samples_with_timing("rr", samples_received_before_this_packet):
                 rr_value_sign = sign(rr_value)
-                if rr_value_sign != self.latest_value_sign:
+                if rr_value_sign != self.latest_rr_value_sign:
                     heartbeat_interval = abs(rr_value)
                     self.append_to_event_stream("heartbeat_interval", (rr_timestamp, heartbeat_interval))
-                self.latest_value_sign = rr_value_sign
+                self.latest_rr_value_sign = rr_value_sign
