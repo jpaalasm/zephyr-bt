@@ -4,6 +4,7 @@ import collections
 import logging
 
 import zephyr.message
+import zephyr.util
 
 SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
 
@@ -25,12 +26,14 @@ class SignalMessageParser:
 
 
 class SignalCollector:
-    def __init__(self, clock_difference_correction=True):
+    def __init__(self, use_clock_difference_correction=True):
         self._signal_streams = {}
         self.sequence_numbers = {}
-        self.clock_difference_correction = clock_difference_correction
         
-        self._clock_difference_deques = collections.defaultdict(lambda: collections.deque(maxlen=60))
+        if use_clock_difference_correction:
+            self.clock_difference_correction = zephyr.util.ClockDifferenceEstimator()
+        else:
+            self.clock_difference_correction = None
     
     def get_message_end_timestamp(self, signal_packet):
         temporal_message_length = (len(signal_packet.signal_values) - 1) / signal_packet.samplerate
@@ -64,22 +67,31 @@ class SignalCollector:
             signal_stream = self._signal_streams[signal_packet.type]
             signal_stream.signal_values.extend(signal_packet.signal_values)
             
-            if self.clock_difference_correction:
+            if self.clock_difference_correction is not None:
                 signal_stream_position = signal_stream.start_timestamp + (len(signal_stream.signal_values) - 1) / signal_stream.samplerate
                 zephyr_clock_ahead = signal_stream_position - time.time()
-                self._clock_difference_deques[signal_packet.type].append(zephyr_clock_ahead)
+                
+                self.clock_difference_correction.append_clock_difference_value(signal_packet.type, zephyr_clock_ahead)
     
     def get_signal_stream(self, stream_type):
         signal_stream = self._signal_streams[stream_type]
         
-        if self.clock_difference_correction:
-            zephyr_clock_ahead_values = self._clock_difference_deques[stream_type]
-            zephyr_clock_ahead_estimate = sum(zephyr_clock_ahead_values) / len(zephyr_clock_ahead_values)
-        else:
-            zephyr_clock_ahead_estimate = 0.0
+        zephyr_clock_ahead_estimate = 0.0 if self.clock_difference_correction is None \
+                else self.clock_difference_correction.get_estimate(stream_type)
         
-        signal_stream = SignalStream(signal_stream.start_timestamp - zephyr_clock_ahead_estimate, signal_stream.samplerate, signal_stream.signal_values)
+        corrected_timestamp = signal_stream.start_timestamp - zephyr_clock_ahead_estimate
+        
+        signal_stream = SignalStream(corrected_timestamp, signal_stream.samplerate, signal_stream.signal_values)
         return signal_stream
+    
+    def iterate_samples_with_timing(self, stream_type, start_sample=0):
+        signal_stream = self.get_signal_stream(stream_type)
+        
+        signal_values = signal_stream.signal_values[start_sample:]
+        
+        for sample_index, signal_value in enumerate(signal_values, start=start_sample):
+            timestamp = float(sample_index) / signal_stream.samplerate + signal_stream.start_timestamp
+            yield timestamp, signal_value
     
     def iterate_signal_streams(self):
         for stream_type in self._signal_streams.keys():

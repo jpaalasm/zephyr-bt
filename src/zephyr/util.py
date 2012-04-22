@@ -1,6 +1,7 @@
 
 import time
 import datetime
+import collections
 
 
 def crc_8_digest(values):
@@ -68,3 +69,17 @@ def unpack_bit_packed_values(data_bytes, value_nbits, twos_complement):
         unpacked_values.append(unpacked_value)
     
     return unpacked_values
+
+
+class ClockDifferenceEstimator:
+    def __init__(self):
+        self._clock_difference_deques = collections.defaultdict(lambda: collections.deque(maxlen=60))
+    
+    def append_clock_difference_value(self, stream_name, difference):
+        self._clock_difference_deques[stream_name].append(difference)
+    
+    def get_estimate(self, stream_name):
+        clock_ahead_values = self._clock_difference_deques[stream_name]
+        
+        clock_ahead_estimate = sum(clock_ahead_values) / float(len(clock_ahead_values)) if len(clock_ahead_values) else 0.0
+        return clock_ahead_estimate
