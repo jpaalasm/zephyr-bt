@@ -9,8 +9,8 @@ def sign(value):
 
 
 class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
-    def __init__(self, clock_difference_correction=True):
-        zephyr.signal.SignalCollector.__init__(self, clock_difference_correction)
+    def __init__(self):
+        zephyr.signal.SignalCollector.__init__(self)
         
         self.latest_rr_value_sign = 0
         self._event_streams = {}

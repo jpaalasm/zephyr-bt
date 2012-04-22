@@ -26,14 +26,11 @@ class SignalMessageParser:
 
 
 class SignalCollector:
-    def __init__(self, use_clock_difference_correction=True):
+    def __init__(self):
         self._signal_streams = {}
         self.sequence_numbers = {}
         
-        if use_clock_difference_correction:
-            self.clock_difference_correction = zephyr.util.ClockDifferenceEstimator()
-        else:
-            self.clock_difference_correction = None
+        self.clock_difference_correction = zephyr.util.ClockDifferenceEstimator()
     
     def get_message_end_timestamp(self, signal_packet):
         temporal_message_length = (len(signal_packet.signal_values) - 1) / signal_packet.samplerate
@@ -67,17 +64,15 @@ class SignalCollector:
             signal_stream = self._signal_streams[signal_packet.type]
             signal_stream.signal_values.extend(signal_packet.signal_values)
             
-            if self.clock_difference_correction is not None:
-                signal_stream_position = signal_stream.start_timestamp + (len(signal_stream.signal_values) - 1) / signal_stream.samplerate
-                zephyr_clock_ahead = signal_stream_position - time.time()
-                
-                self.clock_difference_correction.append_clock_difference_value(signal_packet.type, zephyr_clock_ahead)
+            signal_stream_position = signal_stream.start_timestamp + (len(signal_stream.signal_values) - 1) / signal_stream.samplerate
+            zephyr_clock_ahead = signal_stream_position - time.time()
+            
+            self.clock_difference_correction.append_clock_difference_value(signal_packet.type, zephyr_clock_ahead)
     
     def get_signal_stream(self, stream_type):
         signal_stream = self._signal_streams[stream_type]
         
-        zephyr_clock_ahead_estimate = 0.0 if self.clock_difference_correction is None \
-                else self.clock_difference_correction.get_estimate(stream_type)
+        zephyr_clock_ahead_estimate = self.clock_difference_correction.get_estimate(stream_type)
         
         corrected_timestamp = signal_stream.start_timestamp - zephyr_clock_ahead_estimate
         
