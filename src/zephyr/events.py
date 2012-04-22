@@ -15,9 +15,10 @@ class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
         self.latest_rr_value_sign = 0
         self._event_streams = {}
         
+        self.initialize_event_stream("activity")
         self.initialize_event_stream("heartbeat_interval")
         self.initialize_event_stream("heart_rate")
-        self.initialize_event_stream("summary")
+        self.initialize_event_stream("respiration_rate")
     
     def initialize_event_stream(self, stream_name):
         assert stream_name not in self._event_streams
@@ -45,7 +46,9 @@ class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
             
             corrected_timestamp = message.timestamp - clock_difference_estimation
             
+            self.append_to_event_stream("activity", (corrected_timestamp, message.activity))
             self.append_to_event_stream("heart_rate", (corrected_timestamp, message.heart_rate))
+            self.append_to_event_stream("respiration_rate", (corrected_timestamp, message.respiration_rate))
         
         if isinstance(message, zephyr.message.SignalPacket) and message.type == "rr":
             signal_stream = self.get_signal_stream("rr")
