@@ -14,13 +14,15 @@ def main():
     
     data_dir = zephyr.testing.test_data_dir
     
-    try:
-        zephyr.testing.simulate_packets_from_file(data_dir + "/120-second-bt-stream-hxm.dat",
-                                                  data_dir + "/120-second-bt-stream-hxm-timing.csv",
-                                                  hxm_handler.handle_message)
-    finally:
-        stream_thread.terminate()
-        stream_thread.join()
+    simulation_thread = zephyr.testing.FilePacketSimulator(data_dir + "/120-second-bt-stream-hxm.dat",
+                                                           data_dir + "/120-second-bt-stream-hxm-timing.csv",
+                                                           hxm_handler.handle_message)
+    
+    simulation_thread.start()
+    simulation_thread.join()
+    
+    stream_thread.terminate()
+    stream_thread.join()
 
 
 if __name__ == "__main__":

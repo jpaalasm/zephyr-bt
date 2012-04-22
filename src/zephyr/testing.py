@@ -2,6 +2,7 @@
 import time
 import csv
 import os
+import threading
 
 import zephyr.protocol
 
@@ -9,28 +10,45 @@ import zephyr.protocol
 test_data_dir = os.path.join(os.path.split(os.path.split(os.path.split(__file__)[0])[0])[0], "test_data")
 
 
-def simulate_packets_from_file(stream_data_path, timing_data_path, packet_handler, sleeping=True):
-    input_file = open(stream_data_path, "rb")
-    timings = csv.reader(open(timing_data_path))
-    
-    connection = zephyr.protocol.Protocol(input_file, packet_handler)
-    
-    start_time = time.time()
-    
-    bytes_read = 0
-    
-    for chunk_timestamp_string, chunk_cumulative_byte_count_string in timings:
-        chunk_timestamp = float(chunk_timestamp_string)
-        chunk_cumulative_byte_count = int(chunk_cumulative_byte_count_string)
+class FilePacketSimulator(threading.Thread):
+    def __init__(self, stream_data_path, timing_data_path, packet_handler, sleeping=True):
+        threading.Thread.__init__(self)
         
-        time_to_sleep = chunk_timestamp - (time.time() - start_time)
+        self.stream_data_path = stream_data_path
+        self.timing_data_path = timing_data_path
+        self.packet_handler = packet_handler
+        self.sleeping = sleeping
         
-        if sleeping and time_to_sleep > 0:
-            time.sleep(time_to_sleep)
+        self.terminated = False
+    
+    def terminate(self):
+        self.terminated = True
+    
+    def run(self):
+        input_file = open(self.stream_data_path, "rb")
+        timings = csv.reader(open(self.timing_data_path))
         
-        bytes_to_read = chunk_cumulative_byte_count - bytes_read
-        connection.read_and_handle_bytes(bytes_to_read)
-        bytes_read = chunk_cumulative_byte_count
+        connection = zephyr.protocol.Protocol(input_file, self.packet_handler)
+        
+        start_time = time.time()
+        
+        bytes_read = 0
+        
+        for chunk_timestamp_string, chunk_cumulative_byte_count_string in timings:
+            chunk_timestamp = float(chunk_timestamp_string)
+            chunk_cumulative_byte_count = int(chunk_cumulative_byte_count_string)
+            
+            time_to_sleep = chunk_timestamp - (time.time() - start_time)
+            
+            if self.sleeping and time_to_sleep > 0:
+                time.sleep(time_to_sleep)
+            
+            if self.terminated:
+                break
+            
+            bytes_to_read = chunk_cumulative_byte_count - bytes_read
+            connection.read_and_handle_bytes(bytes_to_read)
+            bytes_read = chunk_cumulative_byte_count
 
 
 def visualize_measurements(signal_collector):
