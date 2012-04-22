@@ -4,8 +4,6 @@ import collections
 import time
 import logging
 
-import zephyr.message
-
 class DelayedRealTimeStream(threading.Thread):
     def __init__(self, signal_collector, callback, delay=2.0):
         threading.Thread.__init__(self)
