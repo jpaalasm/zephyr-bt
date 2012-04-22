@@ -28,10 +28,12 @@ def main():
     
     data_dir = zephyr.testing.test_data_dir
     
-    simulation_thread = threading.Thread(target=zephyr.testing.simulate_signal_packets_from_file,
+    signal_receiver = zephyr.signal.SignalMessageParser(stream_thread.handle_packet)
+    
+    simulation_thread = threading.Thread(target=zephyr.testing.simulate_packets_from_file,
                                          args=(data_dir + "/120-second-bt-stream.dat",
                                                data_dir + "/120-second-bt-stream-timing.csv",
-                                               stream_thread.handle_packet))
+                                               signal_receiver.handle_message))
     simulation_thread.start()
     
     visualization = zephyr.visualization.VisualizationWindow(signal_collector)

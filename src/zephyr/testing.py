@@ -4,15 +4,9 @@ import csv
 import os
 
 import zephyr.protocol
-import zephyr.signal
 
 
 test_data_dir = os.path.join(os.path.split(os.path.split(os.path.split(__file__)[0])[0])[0], "test_data")
-
-
-def simulate_signal_packets_from_file(stream_data_path, timing_data_path, packet_handler, sleeping=True):
-    signal_receiver = zephyr.signal.SignalMessageParser(packet_handler)
-    simulate_packets_from_file(stream_data_path, timing_data_path, signal_receiver.handle_message, sleeping)
 
 
 def simulate_packets_from_file(stream_data_path, timing_data_path, packet_handler, sleeping=True):
@@ -43,8 +37,6 @@ def visualize_measurements(signal_collector):
     import numpy
     import pylab
     
-    rr_events_array = numpy.array(signal_collector.get_event_stream("rr_event"))
-    
     acceleration_start_timestamp, acceleration_samplerate, acceleration_signal = signal_collector.get_signal_stream("acceleration")
     breathing_start_timestamp, breathing_samplerate, breathing_signal = signal_collector.get_signal_stream("breathing")
     ecg_start_timestamp, ecg_samplerate, ecg_signal = signal_collector.get_signal_stream("ecg")
@@ -69,7 +61,6 @@ def visualize_measurements(signal_collector):
     ax1.plot(breathing_x_values, breathing_signal)
     ax2.plot(ecg_x_values, ecg_signal)
     ax3.plot(acceleration_x_values, numpy.array(acceleration_signal))
-    ax4.plot(rr_events_array[:, 0], rr_events_array[:, 1], "+")
     
     ax4.set_ylim((0, 1.5))
     
