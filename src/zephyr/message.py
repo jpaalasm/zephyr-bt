@@ -75,18 +75,19 @@ def parse_summary_packet(payload):
     return message
 
 
-def parse_signal_packet(message):
-    sequence_number = message.payload[0]
-    timestamp_bytes = message.payload[1:9]
-    signal_bytes = message.payload[9:]
+def signal_packet_payload_parser_factory(sample_parser, signal_code, samplerate):
+    def parse_signal_packet(payload):
+        sequence_number = payload[0]
+        timestamp_bytes = payload[1:9]
+        signal_bytes = payload[9:]
+        
+        message_timestamp = zephyr.util.parse_timestamp(timestamp_bytes)
+        signal_values = sample_parser(signal_bytes)
+        
+        signal_packet = zephyr.message.SignalPacket(signal_code, message_timestamp, samplerate, signal_values, sequence_number)
+        return signal_packet
     
-    sample_parser, signal_code, samplerate = SIGNAL_MESSAGE_TYPES[message.message_id]
-    
-    message_timestamp = zephyr.util.parse_timestamp(timestamp_bytes)
-    signal_values = sample_parser(signal_bytes)
-    
-    signal_packet = zephyr.message.SignalPacket(signal_code, message_timestamp, samplerate, signal_values, sequence_number)
-    return signal_packet
+    return parse_signal_packet
 
 
 def parse_10_bit_samples(signal_bytes):
@@ -115,10 +116,8 @@ def parse_accelerometer_samples(signal_bytes):
     return signal_values
 
 
-SIGNAL_MESSAGE_TYPES = {0x21: (parse_10_bit_samples, "breathing", 18.0),
-                        0x22: (parse_10_bit_samples, "ecg", 250.0),
-                        0x24: (parse_16_bit_samples, "rr", 18.0),
-                        0x25: (parse_accelerometer_samples, "acceleration", 50.0)}
-
-OTHER_MESSAGE_TYPES = {0x2B: parse_summary_packet}
-
+MESSAGE_TYPES = {0x2B: parse_summary_packet,
+                 0x21: signal_packet_payload_parser_factory(parse_10_bit_samples, "breathing", 18.0),
+                 0x22: signal_packet_payload_parser_factory(parse_10_bit_samples, "ecg", 250.0),
+                 0x24: signal_packet_payload_parser_factory(parse_16_bit_samples, "rr", 18.0),
+                 0x25: signal_packet_payload_parser_factory(parse_accelerometer_samples, "acceleration", 50.0)}

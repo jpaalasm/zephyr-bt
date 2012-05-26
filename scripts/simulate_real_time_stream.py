@@ -28,7 +28,7 @@ def main():
     
     data_dir = zephyr.testing.test_data_dir
     
-    signal_receiver = zephyr.signal.SignalMessageParser(stream_thread.handle_packet)
+    signal_receiver = zephyr.signal.MessagePayloadParser(stream_thread.handle_packet)
     
     simulation_thread = zephyr.testing.FilePacketSimulator(data_dir + "/120-second-bt-stream.dat",
                                                            data_dir + "/120-second-bt-stream-timing.csv",

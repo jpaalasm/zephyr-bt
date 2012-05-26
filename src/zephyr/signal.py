@@ -9,18 +9,15 @@ import zephyr.util
 SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
 
 
-class SignalMessageParser:
+class MessagePayloadParser:
     def __init__(self, callback):
         self.callback = callback
     
     def handle_message(self, message_frame):
         message_id = message_frame.message_id
         
-        if message_id in zephyr.message.SIGNAL_MESSAGE_TYPES:
-            message = zephyr.message.parse_signal_packet(message_frame)
-            self.callback(message)
-        elif message_id in zephyr.message.OTHER_MESSAGE_TYPES:
-            handler = zephyr.message.OTHER_MESSAGE_TYPES[message_id]
+        if message_id in zephyr.message.MESSAGE_TYPES:
+            handler = zephyr.message.MESSAGE_TYPES[message_id]
             message = handler(message_frame.payload)
             self.callback(message)
 
@@ -36,11 +33,12 @@ class SignalCollector:
         temporal_message_length = (len(signal_packet.signal_values) - 1) / signal_packet.samplerate
         return signal_packet.timestamp + temporal_message_length
     
-    def initialize_signal_stream(self, signal_packet):
-        signal_stream = SignalStream(signal_packet.timestamp, signal_packet.samplerate, [])
-        
-        assert signal_packet.type not in self._signal_streams
-        self._signal_streams[signal_packet.type] = signal_stream
+    def initialize_signal_stream_if_does_not_exist(self, signal_packet):
+        if signal_packet.type not in self._signal_streams:
+            signal_stream = SignalStream(signal_packet.timestamp, signal_packet.samplerate, [])
+            
+            assert signal_packet.type not in self._signal_streams
+            self._signal_streams[signal_packet.type] = signal_stream
     
     def reset_signal_stream(self, stream_name):
         del self._signal_streams[stream_name]
@@ -58,8 +56,7 @@ class SignalCollector:
             
             self.sequence_numbers[signal_packet.type] = signal_packet.sequence_number
             
-            if signal_packet.type not in self._signal_streams:
-                self.initialize_signal_stream(signal_packet)
+            self.initialize_signal_stream_if_does_not_exist(signal_packet)
             
             signal_stream = self._signal_streams[signal_packet.type]
             signal_stream.signal_values.extend(signal_packet.signal_values)
