@@ -55,30 +55,30 @@ def visualize_measurements(signal_collector):
     import numpy
     import pylab
     
-    acceleration_end_timestamp, acceleration_samplerate, acceleration_signal = signal_collector.get_signal_stream("acceleration")
-    breathing_end_timestamp, breathing_samplerate, breathing_signal = signal_collector.get_signal_stream("breathing")
-    ecg_end_timestamp, ecg_samplerate, ecg_signal = signal_collector.get_signal_stream("ecg")
+    acceleration_stream = signal_collector.get_signal_stream("acceleration")
+    breathing_stream = signal_collector.get_signal_stream("breathing")
+    ecg_stream = signal_collector.get_signal_stream("ecg")
     
     ax1 = pylab.subplot(4,1,1)
     ax2 = pylab.subplot(4,1,2,sharex=ax1)
     ax3 = pylab.subplot(4,1,3,sharex=ax1)
     ax4 = pylab.subplot(4,1,4,sharex=ax1)
     
-    breathing_x_values = numpy.arange(len(breathing_signal), dtype=float)
-    breathing_x_values /= breathing_samplerate
-    breathing_x_values += breathing_end_timestamp - len(breathing_signal) / breathing_samplerate
+    breathing_x_values = numpy.arange(len(breathing_stream.signal_values), dtype=float)
+    breathing_x_values /= breathing_stream.samplerate
+    breathing_x_values += breathing_stream.start_timestamp
     
-    acceleration_x_values = numpy.arange(len(acceleration_signal), dtype=float)
-    acceleration_x_values /= acceleration_samplerate
-    acceleration_x_values += acceleration_end_timestamp - len(acceleration_signal) / acceleration_samplerate
+    acceleration_x_values = numpy.arange(len(acceleration_stream.signal_values), dtype=float)
+    acceleration_x_values /= acceleration_stream.samplerate
+    acceleration_x_values += acceleration_stream.start_timestamp
     
-    ecg_x_values = numpy.arange(len(ecg_signal), dtype=float)
-    ecg_x_values /= ecg_samplerate
-    ecg_x_values += ecg_end_timestamp - len(ecg_signal) / ecg_samplerate
+    ecg_x_values = numpy.arange(len(ecg_stream.signal_values), dtype=float)
+    ecg_x_values /= ecg_stream.samplerate
+    ecg_x_values += ecg_stream.start_timestamp
     
-    ax1.plot(breathing_x_values, breathing_signal)
-    ax2.plot(ecg_x_values, ecg_signal)
-    ax3.plot(acceleration_x_values, numpy.array(acceleration_signal))
+    ax1.plot(breathing_x_values, breathing_stream.signal_values)
+    ax2.plot(ecg_x_values, ecg_stream.signal_values)
+    ax3.plot(acceleration_x_values, numpy.array(acceleration_stream.signal_values))
     
     ax4.set_ylim((0, 1.5))
     

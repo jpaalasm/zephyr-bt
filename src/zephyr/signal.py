@@ -1,12 +1,37 @@
 
 import time
-import collections
 import logging
+import copy
 
 import zephyr.message
 import zephyr.util
 
-SignalStream = collections.namedtuple("SignalStream", ["end_timestamp", "samplerate", "signal_values"])
+
+class SignalStream:
+    def __init__(self, signal_packet):
+        self.samplerate = None
+        self.end_timestamp = None
+        self.signal_values = []
+        
+        self.append_signal_packet(signal_packet)
+    
+    def append_signal_packet(self, signal_packet):
+        assert self.samplerate is None or self.samplerate == signal_packet.samplerate
+        
+        self.samplerate = signal_packet.samplerate
+        self.end_timestamp = signal_packet.timestamp + len(signal_packet.signal_values) / float(signal_packet.samplerate)
+        self.signal_values.extend(signal_packet.signal_values)
+    
+    def get_time_corrected_signal_stream(self, corrected_timestamp):
+        signal_stream = copy.copy(self)
+        signal_stream.samplerate = self.samplerate
+        signal_stream.end_timestamp = corrected_timestamp
+        signal_stream.signal_values = self.signal_values
+        return signal_stream
+    
+    @property
+    def start_timestamp(self):
+        return self.end_timestamp - len(self.signal_values) / float(self.samplerate)
 
 
 class MessagePayloadParser:
@@ -28,36 +53,24 @@ class SignalCollector:
         self.chunk_handler = SignalChunkHandler(self)
         self.clock_difference_correction = zephyr.util.ClockDifferenceEstimator()
     
-    def initialize_signal_stream_if_does_not_exist(self, signal_packet):
-        if signal_packet.type not in self._signal_streams:
-            signal_stream = SignalStream(signal_packet.timestamp, signal_packet.samplerate, [])
-            
-            assert signal_packet.type not in self._signal_streams
-            self._signal_streams[signal_packet.type] = signal_stream
-    
     def reset_signal_stream(self, stream_name):
         del self._signal_streams[stream_name]
     
     def get_signal_stream(self, stream_type):
         signal_stream = self._signal_streams[stream_type]
-        
         zephyr_clock_ahead_estimate = self.clock_difference_correction.get_estimate(stream_type)
-        
         corrected_timestamp = signal_stream.end_timestamp - zephyr_clock_ahead_estimate
         
-        signal_stream = SignalStream(corrected_timestamp, signal_stream.samplerate, signal_stream.signal_values)
+        signal_stream = signal_stream.get_time_corrected_signal_stream(corrected_timestamp)
         return signal_stream
     
     def iterate_samples_with_timing(self, stream_type, start_sample=0):
         signal_stream = self.get_signal_stream(stream_type)
         
-        signal_stream_length_seconds = len(signal_stream.signal_values) / float(signal_stream.samplerate)
-        signal_stream_start_timestamp = signal_stream.end_timestamp - signal_stream_length_seconds
-        
         signal_values = signal_stream.signal_values[start_sample:]
         
         for sample_index, signal_value in enumerate(signal_values, start=start_sample):
-            timestamp = float(sample_index) / signal_stream.samplerate + signal_stream_start_timestamp
+            timestamp = signal_stream.start_timestamp + float(sample_index) / signal_stream.samplerate
             yield timestamp, signal_value
     
     def iterate_signal_streams(self):
@@ -65,18 +78,18 @@ class SignalCollector:
             yield stream_type, self.get_signal_stream(stream_type)
 
     def extend_stream(self, signal_packet):
-        self.initialize_signal_stream_if_does_not_exist(signal_packet)
+        if signal_packet.type not in self._signal_streams:
+            signal_stream = SignalStream(signal_packet)
+            self._signal_streams[signal_packet.type] = signal_stream
+        else:
+            signal_stream = self._signal_streams[signal_packet.type]
         
-        end_timestamp = signal_packet.timestamp + len(signal_packet.signal_values) / float(signal_packet.samplerate)
-        
-        signal_stream = self._signal_streams[signal_packet.type]._replace(end_timestamp=end_timestamp)
-        signal_stream.signal_values.extend(signal_packet.signal_values)
-        self._signal_streams[signal_packet.type] = signal_stream
-        
+        signal_stream.append_signal_packet(signal_packet)
         return signal_stream
     
     def handle_packet(self, signal_packet):
         return self.chunk_handler.handle_packet(signal_packet)
+
 
 class SignalChunkHandler:
     def __init__(self, signal_collector):
