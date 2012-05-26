@@ -6,7 +6,7 @@ import logging
 import zephyr.message
 import zephyr.util
 
-SignalStream = collections.namedtuple("SignalStream", ["start_timestamp", "samplerate", "signal_values"])
+SignalStream = collections.namedtuple("SignalStream", ["end_timestamp", "samplerate", "signal_values"])
 
 
 class MessagePayloadParser:
@@ -43,7 +43,7 @@ class SignalCollector:
         
         zephyr_clock_ahead_estimate = self.clock_difference_correction.get_estimate(stream_type)
         
-        corrected_timestamp = signal_stream.start_timestamp - zephyr_clock_ahead_estimate
+        corrected_timestamp = signal_stream.end_timestamp - zephyr_clock_ahead_estimate
         
         signal_stream = SignalStream(corrected_timestamp, signal_stream.samplerate, signal_stream.signal_values)
         return signal_stream
@@ -51,10 +51,13 @@ class SignalCollector:
     def iterate_samples_with_timing(self, stream_type, start_sample=0):
         signal_stream = self.get_signal_stream(stream_type)
         
+        signal_stream_length_seconds = len(signal_stream.signal_values) / float(signal_stream.samplerate)
+        signal_stream_start_timestamp = signal_stream.end_timestamp - signal_stream_length_seconds
+        
         signal_values = signal_stream.signal_values[start_sample:]
         
         for sample_index, signal_value in enumerate(signal_values, start=start_sample):
-            timestamp = float(sample_index) / signal_stream.samplerate + signal_stream.start_timestamp
+            timestamp = float(sample_index) / signal_stream.samplerate + signal_stream_start_timestamp
             yield timestamp, signal_value
     
     def iterate_signal_streams(self):
@@ -64,8 +67,11 @@ class SignalCollector:
     def extend_stream(self, signal_packet):
         self.initialize_signal_stream_if_does_not_exist(signal_packet)
         
-        signal_stream = self._signal_streams[signal_packet.type]
+        end_timestamp = signal_packet.timestamp + len(signal_packet.signal_values) / float(signal_packet.samplerate)
+        
+        signal_stream = self._signal_streams[signal_packet.type]._replace(end_timestamp=end_timestamp)
         signal_stream.signal_values.extend(signal_packet.signal_values)
+        self._signal_streams[signal_packet.type] = signal_stream
         
         return signal_stream
     
@@ -107,7 +113,6 @@ class SignalChunkHandler:
             
             signal_stream = self.signal_collector.extend_stream(signal_packet)
             
-            signal_stream_position = signal_stream.start_timestamp + (len(signal_stream.signal_values) - 1) / signal_stream.samplerate
-            zephyr_clock_ahead = signal_stream_position - time.time()
+            zephyr_clock_ahead = signal_stream.end_timestamp - time.time()
             
             self.clock_difference_correction.append_clock_difference_value(signal_packet.type, zephyr_clock_ahead)

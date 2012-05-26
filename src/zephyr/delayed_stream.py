@@ -29,7 +29,9 @@ class DelayedRealTimeStream(threading.Thread):
             delayed_current_time = time.time() - self.delay
             
             for stream_name, stream in self.signal_collector.iterate_signal_streams():
-                stream_sample_index = int((delayed_current_time - stream.start_timestamp) * stream.samplerate)
+                stream_start_timestamp = stream.end_timestamp - len(stream.signal_values) / float(stream.samplerate)
+                
+                stream_sample_index = int((delayed_current_time - stream_start_timestamp) * stream.samplerate)
                 
                 output_position = self.stream_output_positions[stream_name]
                 

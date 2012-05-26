@@ -36,13 +36,13 @@ class VisualizationWindow:
     def update_plots(self):
         while not self.stop_updating_requested:
             for stream_name, stream_data in self.signal_collector.iterate_signal_streams():
-                start_timestamp, samplerate, signal_values = stream_data
+                end_timestamp, samplerate, signal_values = stream_data
                 
                 signal_value_array = numpy.array(signal_values, dtype=float)
                 
                 x_values = numpy.arange(len(signal_value_array), dtype=float)
                 x_values /= samplerate
-                x_values += start_timestamp
+                x_values += end_timestamp - len(signal_value_array) / samplerate
                 
                 if stream_name == "acceleration":
                     for line_i, line in enumerate(self.acceleration_lines):
