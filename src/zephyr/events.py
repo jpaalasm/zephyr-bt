@@ -1,6 +1,4 @@
 
-import time
-
 import zephyr.signal
 
 
@@ -39,12 +37,7 @@ class SignalCollectorWithEventProcessing(zephyr.signal.SignalCollector):
         zephyr.signal.SignalCollector.handle_packet(self, message)
         
         if isinstance(message, zephyr.message.SummaryMessage):
-            message_clock_difference = message.timestamp - time.time()
-            
-            self.clock_difference_correction.append_clock_difference_value("summary", message_clock_difference)
-            clock_difference_estimation = self.clock_difference_correction.get_estimate("summary")
-            
-            corrected_timestamp = message.timestamp - clock_difference_estimation
+            corrected_timestamp = self.clock_difference_correction.estimate_and_correct_timestamp(message.timestamp, "summary")
             
             self.append_to_event_stream("activity", (corrected_timestamp, message.activity))
             self.append_to_event_stream("heart_rate", (corrected_timestamp, message.heart_rate))

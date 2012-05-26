@@ -75,11 +75,12 @@ class ClockDifferenceEstimator:
     def __init__(self):
         self._clock_difference_deques = collections.defaultdict(lambda: collections.deque(maxlen=60))
     
-    def append_clock_difference_value(self, stream_name, difference):
-        self._clock_difference_deques[stream_name].append(difference)
-    
-    def get_estimate(self, stream_name):
-        clock_ahead_values = self._clock_difference_deques[stream_name]
+    def estimate_and_correct_timestamp(self, timestamp, key):
+        instantaneous_zephyr_clock_ahead = timestamp - time.time()
+        self._clock_difference_deques[key].append(instantaneous_zephyr_clock_ahead)
         
-        clock_ahead_estimate = sum(clock_ahead_values) / float(len(clock_ahead_values)) if len(clock_ahead_values) else 0.0
-        return clock_ahead_estimate
+        clock_ahead_values = self._clock_difference_deques[key]
+        zephyr_clock_ahead_estimate = sum(clock_ahead_values) / float(len(clock_ahead_values))
+        
+        corrected_timestamp = timestamp - zephyr_clock_ahead_estimate
+        return corrected_timestamp

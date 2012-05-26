@@ -22,13 +22,6 @@ class SignalStream:
         self.end_timestamp = signal_packet.timestamp + len(signal_packet.signal_values) / float(signal_packet.samplerate)
         self.signal_values.extend(signal_packet.signal_values)
     
-    def get_time_corrected_signal_stream(self, corrected_timestamp):
-        signal_stream = copy.copy(self)
-        signal_stream.samplerate = self.samplerate
-        signal_stream.end_timestamp = corrected_timestamp
-        signal_stream.signal_values = self.signal_values
-        return signal_stream
-    
     @property
     def start_timestamp(self):
         return self.end_timestamp - len(self.signal_values) / float(self.samplerate)
@@ -57,11 +50,20 @@ class SignalCollector:
         del self._signal_streams[stream_name]
     
     def get_signal_stream(self, stream_type):
-        signal_stream = self._signal_streams[stream_type]
-        zephyr_clock_ahead_estimate = self.clock_difference_correction.get_estimate(stream_type)
-        corrected_timestamp = signal_stream.end_timestamp - zephyr_clock_ahead_estimate
+        return self._signal_streams[stream_type]
+    
+    def iterate_signal_streams(self):
+        for stream_type, signal_stream in self._signal_streams.items():
+            yield stream_type, signal_stream
+    
+    def extend_stream(self, signal_packet):
+        if signal_packet.type not in self._signal_streams:
+            signal_stream = SignalStream(signal_packet)
+            self._signal_streams[signal_packet.type] = signal_stream
+        else:
+            signal_stream = self._signal_streams[signal_packet.type]
         
-        signal_stream = signal_stream.get_time_corrected_signal_stream(corrected_timestamp)
+        signal_stream.append_signal_packet(signal_packet)
         return signal_stream
     
     def iterate_samples_with_timing(self, stream_type, start_sample=0):
@@ -72,20 +74,6 @@ class SignalCollector:
         for sample_index, signal_value in enumerate(signal_values, start=start_sample):
             timestamp = signal_stream.start_timestamp + float(sample_index) / signal_stream.samplerate
             yield timestamp, signal_value
-    
-    def iterate_signal_streams(self):
-        for stream_type in self._signal_streams.keys():
-            yield stream_type, self.get_signal_stream(stream_type)
-
-    def extend_stream(self, signal_packet):
-        if signal_packet.type not in self._signal_streams:
-            signal_stream = SignalStream(signal_packet)
-            self._signal_streams[signal_packet.type] = signal_stream
-        else:
-            signal_stream = self._signal_streams[signal_packet.type]
-        
-        signal_stream.append_signal_packet(signal_packet)
-        return signal_stream
     
     def handle_packet(self, signal_packet):
         return self.chunk_handler.handle_packet(signal_packet)
@@ -112,7 +100,16 @@ class SignalChunkHandler:
     
     def handle_packet(self, signal_packet):
         if isinstance(signal_packet, zephyr.message.SignalPacket):
+            end_timestamp = signal_packet.timestamp + len(signal_packet.signal_values) / float(signal_packet.samplerate)
+            
+            corrected_end_timestamp = self.clock_difference_correction.estimate_and_correct_timestamp(end_timestamp, signal_packet.type)
+            corrected_timestamp = signal_packet.timestamp + corrected_end_timestamp - end_timestamp
+            
+            signal_packet = signal_packet._replace(timestamp=corrected_timestamp)
+            
+            
             expected_sequence_number = self.get_expected_sequence_number(signal_packet.type)
+            self.sequence_numbers[signal_packet.type] = signal_packet.sequence_number
             
             if expected_sequence_number is not None and expected_sequence_number != signal_packet.sequence_number:
                 logging.warning("Invalid sequence number in stream %s: %d != %d",
@@ -122,10 +119,5 @@ class SignalChunkHandler:
             else:
                 pass
             
-            self.sequence_numbers[signal_packet.type] = signal_packet.sequence_number
             
-            signal_stream = self.signal_collector.extend_stream(signal_packet)
-            
-            zephyr_clock_ahead = signal_stream.end_timestamp - time.time()
-            
-            self.clock_difference_correction.append_clock_difference_value(signal_packet.type, zephyr_clock_ahead)
+            self.signal_collector.extend_stream(signal_packet)
