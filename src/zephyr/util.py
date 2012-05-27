@@ -9,7 +9,7 @@ def crc_8_digest(values):
     
     for byte in values:
         crc ^= byte
-        for i in range(8):
+        for i in range(8):  #@UnusedVariable
             if crc & 1:
                 crc = (crc >> 1) ^ 0x8C
             else:
