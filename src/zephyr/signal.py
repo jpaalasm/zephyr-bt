@@ -7,18 +7,17 @@ import zephyr.util
 
 class SignalStream:
     def __init__(self, signal_packet):
-        self.samplerate = None
-        self.end_timestamp = None
+        self.samplerate = signal_packet.samplerate
         self.samples = []
         
+        self.end_timestamp = None
         self.append_signal_packet(signal_packet)
     
     def append_signal_packet(self, signal_packet):
-        assert self.samplerate is None or self.samplerate == signal_packet.samplerate
+        assert signal_packet.samplerate == self.samplerate
         
-        self.samplerate = signal_packet.samplerate
-        self.end_timestamp = signal_packet.timestamp + len(signal_packet.samples) / float(signal_packet.samplerate)
         self.samples.extend(signal_packet.samples)
+        self.end_timestamp = signal_packet.timestamp + len(signal_packet.samples) / float(signal_packet.samplerate)
     
     @property
     def start_timestamp(self):
