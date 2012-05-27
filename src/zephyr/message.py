@@ -16,7 +16,7 @@ SummaryMessage = collections.namedtuple("SummaryMessage",
                                          "heart_rate_confidence"])
 
 SignalPacket = collections.namedtuple("SignalPacket", ["type", "timestamp", "samplerate",
-                                                       "signal_values", "sequence_number"])
+                                                       "samples", "sequence_number"])
 
 
 def parse_hxm_message(payload):
@@ -82,38 +82,38 @@ def signal_packet_payload_parser_factory(sample_parser, signal_code, samplerate)
         signal_bytes = payload[9:]
         
         message_timestamp = zephyr.util.parse_timestamp(timestamp_bytes)
-        signal_values = sample_parser(signal_bytes)
+        samples = sample_parser(signal_bytes)
         
-        signal_packet = zephyr.message.SignalPacket(signal_code, message_timestamp, samplerate, signal_values, sequence_number)
+        signal_packet = zephyr.message.SignalPacket(signal_code, message_timestamp, samplerate, samples, sequence_number)
         return signal_packet
     
     return parse_signal_packet
 
 
 def parse_10_bit_samples(signal_bytes):
-    signal_values = zephyr.util.unpack_bit_packed_values(signal_bytes, 10, False)
-    signal_values = [value - 512 for value in signal_values]
-    return signal_values
+    samples = zephyr.util.unpack_bit_packed_values(signal_bytes, 10, False)
+    samples = [value - 512 for value in samples]
+    return samples
 
 
 def parse_16_bit_samples(signal_bytes):
-    signal_values = zephyr.util.unpack_bit_packed_values(signal_bytes, 16, True)
-    signal_values = [value * 0.001 for value in signal_values]
-    return signal_values
+    samples = zephyr.util.unpack_bit_packed_values(signal_bytes, 16, True)
+    samples = [value * 0.001 for value in samples]
+    return samples
 
 
 def parse_accelerometer_samples(signal_bytes):
-    interleaved_signal_values = parse_10_bit_samples(signal_bytes)
+    interleaved_samples = parse_10_bit_samples(signal_bytes)
     
     # 83 correspond to one g in the 14-bit acceleration
     # signal, and this of 1/4 of that
     one_g_value = 20.75
-    interleaved_signal_values = [value / one_g_value for value in interleaved_signal_values]
+    interleaved_samples = [value / one_g_value for value in interleaved_samples]
     
-    signal_values = zip(interleaved_signal_values[0::3],
-                        interleaved_signal_values[1::3],
-                        interleaved_signal_values[2::3])
-    return signal_values
+    samples = zip(interleaved_samples[0::3],
+                        interleaved_samples[1::3],
+                        interleaved_samples[2::3])
+    return samples
 
 
 MESSAGE_TYPES = {0x2B: parse_summary_packet,

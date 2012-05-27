@@ -36,9 +36,9 @@ class VisualizationWindow:
     def update_plots(self):
         while not self.stop_updating_requested:
             for stream_name, stream_data in self.signal_collector.iterate_signal_streams():
-                end_timestamp, samplerate, signal_values = stream_data
+                end_timestamp, samplerate, samples = stream_data
                 
-                signal_value_array = numpy.array(signal_values, dtype=float)
+                signal_value_array = numpy.array(samples, dtype=float)
                 
                 x_values = numpy.arange(len(signal_value_array), dtype=float)
                 x_values /= samplerate

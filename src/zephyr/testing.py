@@ -64,21 +64,21 @@ def visualize_measurements(signal_collector):
     ax3 = pylab.subplot(4,1,3,sharex=ax1)
     ax4 = pylab.subplot(4,1,4,sharex=ax1)
     
-    breathing_x_values = numpy.arange(len(breathing_stream.signal_values), dtype=float)
+    breathing_x_values = numpy.arange(len(breathing_stream.samples), dtype=float)
     breathing_x_values /= breathing_stream.samplerate
     breathing_x_values += breathing_stream.start_timestamp
     
-    acceleration_x_values = numpy.arange(len(acceleration_stream.signal_values), dtype=float)
+    acceleration_x_values = numpy.arange(len(acceleration_stream.samples), dtype=float)
     acceleration_x_values /= acceleration_stream.samplerate
     acceleration_x_values += acceleration_stream.start_timestamp
     
-    ecg_x_values = numpy.arange(len(ecg_stream.signal_values), dtype=float)
+    ecg_x_values = numpy.arange(len(ecg_stream.samples), dtype=float)
     ecg_x_values /= ecg_stream.samplerate
     ecg_x_values += ecg_stream.start_timestamp
     
-    ax1.plot(breathing_x_values, breathing_stream.signal_values)
-    ax2.plot(ecg_x_values, ecg_stream.signal_values)
-    ax3.plot(acceleration_x_values, numpy.array(acceleration_stream.signal_values))
+    ax1.plot(breathing_x_values, breathing_stream.samples)
+    ax2.plot(ecg_x_values, ecg_stream.samples)
+    ax3.plot(acceleration_x_values, numpy.array(acceleration_stream.samples))
     
     ax4.set_ylim((0, 1.5))
     

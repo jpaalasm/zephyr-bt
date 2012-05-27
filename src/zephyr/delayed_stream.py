@@ -29,19 +29,19 @@ class DelayedRealTimeStream(threading.Thread):
             delayed_current_time = time.time() - self.delay
             
             for stream_name, stream in self.signal_collector.iterate_signal_streams():
-                stream_start_timestamp = stream.end_timestamp - len(stream.signal_values) / float(stream.samplerate)
+                stream_start_timestamp = stream.end_timestamp - len(stream.samples) / float(stream.samplerate)
                 
                 stream_sample_index = int((delayed_current_time - stream_start_timestamp) * stream.samplerate)
                 
                 output_position = self.stream_output_positions[stream_name]
                 
                 if stream_sample_index > output_position:
-                    if stream_sample_index < len(stream.signal_values):
-                        delayed_value = stream.signal_values[stream_sample_index]
+                    if stream_sample_index < len(stream.samples):
+                        delayed_value = stream.samples[stream_sample_index]
                         self.callback(stream_name, delayed_value)
                         self.stream_output_positions[stream_name] = stream_sample_index
                     else:
-                        missing_seconds = (stream_sample_index - len(stream.signal_values)) / stream.samplerate
+                        missing_seconds = (stream_sample_index - len(stream.samples)) / stream.samplerate
                         logging.warning("%s: %1.3f sec of data missing (%d %d)", stream_name, missing_seconds, stream_sample_index, output_position)
             
             for stream_name, stream in self.signal_collector.iterate_event_streams():
