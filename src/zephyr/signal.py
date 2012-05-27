@@ -1,7 +1,5 @@
 
-import time
 import logging
-import copy
 
 import zephyr.message
 import zephyr.util
@@ -56,7 +54,10 @@ class SignalCollector:
         for stream_type, signal_stream in self._signal_streams.items():
             yield stream_type, signal_stream
     
-    def extend_stream(self, signal_packet):
+    def extend_stream(self, signal_packet, starts_new_stream):
+        if starts_new_stream:
+            self.reset_signal_stream(signal_packet.type)
+        
         if signal_packet.type not in self._signal_streams:
             signal_stream = SignalStream(signal_packet)
             self._signal_streams[signal_packet.type] = signal_stream
@@ -115,9 +116,7 @@ class SignalChunkHandler:
                 logging.warning("Invalid sequence number in stream %s: %d != %d",
                                 signal_packet.type, expected_sequence_number,
                                 signal_packet.sequence_number)
-                self.signal_collector.reset_signal_stream(signal_packet.type)
+                
+                self.signal_collector.extend_stream(signal_packet, True)
             else:
-                pass
-            
-            
-            self.signal_collector.extend_stream(signal_packet)
+                self.signal_collector.extend_stream(signal_packet, False)
