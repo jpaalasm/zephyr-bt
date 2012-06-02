@@ -4,7 +4,6 @@ import time
 import platform
 import csv
 
-import zephyr.message
 import zephyr.protocol
 
 def main():
