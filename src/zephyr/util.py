@@ -29,6 +29,16 @@ def parse_uint16_values_from_bytes(byte_values):
         yield byte1 + (byte2 << 8)
 
 
+def uint16_from_two_bytes((byte1, byte2)):
+    return byte1 + (byte2 << 8)
+
+
+def parse_uint16_values_from_byte_sequence(ls_byte_indices, byte_sequence):
+    values = [uint16_from_two_bytes(byte_sequence[index:index + 2])
+              for index in ls_byte_indices]
+    return values
+
+
 def parse_timestamp(timestamp_bytes):
     year = timestamp_bytes[0] + (timestamp_bytes[1] << 8)
     month = timestamp_bytes[2]
@@ -71,11 +81,16 @@ def unpack_bit_packed_values(data_bytes, value_nbits, twos_complement):
     return unpacked_values
 
 
+DISABLE_CLOCK_DIFFERENCE_ESTIMATION = False
+
 class ClockDifferenceEstimator:
     def __init__(self):
         self._clock_difference_deques = collections.defaultdict(lambda: collections.deque(maxlen=60))
     
     def estimate_and_correct_timestamp(self, timestamp, key):
+        if DISABLE_CLOCK_DIFFERENCE_ESTIMATION:
+            return timestamp
+        
         instantaneous_zephyr_clock_ahead = timestamp - time.time()
         self._clock_difference_deques[key].append(instantaneous_zephyr_clock_ahead)
         

@@ -26,14 +26,21 @@ def main():
     serial_port = serial_port_dict[platform.system()]
     ser = serial.Serial(serial_port)
     
-    signal_collector = zephyr.events.SignalCollectorWithEventProcessing()
-    signal_receiver = zephyr.signal.MessagePayloadParser(signal_collector.handle_packet)
-    protocol = zephyr.protocol.BioHarnessProtocol(ser, signal_receiver.handle_message)
     
-    stream_thread = zephyr.delayed_stream.DelayedRealTimeStream(signal_collector, callback)
-    stream_thread.start()
+    collector = MeasurementCollector()
+    rr_signal_analysis = BioHarnessSignalAnalysis([], [collector.handle_event])
+    signal_packet_handlers = [collector.handle_signal, rr_signal_analysis.handle_signal]
     
+    signal_packet_handler = BioHarnessPacketHandler(signal_packet_handlers, [collector.handle_event])
+    
+    payload_parser = MessagePayloadParser(signal_packet_handler.handle_packet)
+    
+    delayed_stream_thread = DelayedRealTimeStream(collector, callback)
+    
+    protocol = zephyr.protocol.BioHarnessProtocol(ser, payload_parser.handle_message)
     protocol.enable_periodic_packets()
+    
+    delayed_stream_thread.start()
     
     threading.Thread(target=protocol.read_and_handle_forever).start()
     
@@ -42,7 +49,6 @@ def main():
     
     stream_thread.terminate()
     stream_thread.join()
-    
 
 
 if __name__ == "__main__":

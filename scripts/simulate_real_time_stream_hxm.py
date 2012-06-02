@@ -1,6 +1,8 @@
 
-import zephyr.testing
-import zephyr.hxm
+import zephyr
+
+from zephyr.message import MessagePayloadParser
+from zephyr.testing import FilePacketSimulator, test_data_dir
 
 
 def callback(message):
@@ -10,13 +12,11 @@ def callback(message):
 def main():
     zephyr.configure_root_logger()
     
-    hxm_handler = zephyr.hxm.HxMMessageParser(callback)
+    hxm_handler = MessagePayloadParser(callback)
     
-    data_dir = zephyr.testing.test_data_dir
-    
-    simulation_thread = zephyr.testing.FilePacketSimulator(data_dir + "/120-second-bt-stream-hxm.dat",
-                                                           data_dir + "/120-second-bt-stream-hxm-timing.csv",
-                                                           hxm_handler.handle_message)
+    simulation_thread = FilePacketSimulator(test_data_dir + "/120-second-bt-stream-hxm.dat",
+                                            test_data_dir + "/120-second-bt-stream-hxm-timing.csv",
+                                            hxm_handler.handle_message)
     
     simulation_thread.start()
     simulation_thread.join()

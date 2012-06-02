@@ -1,18 +1,29 @@
 
 import time
 
-import zephyr.events
-import zephyr.testing
+import zephyr.util
+from zephyr.collector import MeasurementCollector
+from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler
+from zephyr.message import MessagePayloadParser
+from zephyr.testing import FilePacketSimulator, visualize_measurements
+
 
 def main():
-    signal_collector = zephyr.events.SignalCollectorWithEventProcessing()
-    signal_receiver = zephyr.signal.MessagePayloadParser(signal_collector.handle_packet)
+    zephyr.util.DISABLE_CLOCK_DIFFERENCE_ESTIMATION = True
     
-    simulation_thread = zephyr.testing.FilePacketSimulator("../test_data/120-second-bt-stream.dat", "../test_data/120-second-bt-stream-timing.csv", signal_receiver.handle_message, False)
+    collector = MeasurementCollector()
+    rr_signal_analysis = BioHarnessSignalAnalysis([], [collector.handle_event])
+    signal_packet_handlers = [collector.handle_signal, rr_signal_analysis.handle_signal]
+    
+    signal_packet_handler = BioHarnessPacketHandler(signal_packet_handlers, [collector.handle_event])
+    
+    payload_parser = MessagePayloadParser(signal_packet_handler.handle_packet)
+    
+    simulation_thread = FilePacketSimulator("../test_data/120-second-bt-stream.dat", "../test_data/120-second-bt-stream-timing.csv", payload_parser.handle_message, False)
     simulation_thread.start()
     simulation_thread.join()
     
-    zephyr.testing.visualize_measurements(signal_collector)
+    visualize_measurements(collector)
 
 if __name__ == "__main__":
     main()

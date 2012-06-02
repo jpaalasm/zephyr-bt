@@ -18,9 +18,6 @@ class DelayedRealTimeStream(threading.Thread):
     def terminate(self):
         self.terminate_requested = True
     
-    def handle_packet(self, signal_packet):
-        self.signal_collector.handle_packet(signal_packet)
-    
     def run(self):
         # Wait so that all signal streams have been initialized
         time.sleep(self.delay + 1.0)

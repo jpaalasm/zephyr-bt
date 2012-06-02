@@ -35,14 +35,12 @@ class VisualizationWindow:
     
     def update_plots(self):
         while not self.stop_updating_requested:
-            for stream_name, stream_data in self.signal_collector.iterate_signal_streams():
-                end_timestamp, samplerate, samples = stream_data
-                
-                signal_value_array = numpy.array(samples, dtype=float)
+            for stream_name, stream in self.signal_collector.iterate_signal_streams():
+                signal_value_array = numpy.array(stream.samples, dtype=float)
                 
                 x_values = numpy.arange(len(signal_value_array), dtype=float)
-                x_values /= samplerate
-                x_values += end_timestamp - len(signal_value_array) / samplerate
+                x_values /= stream.samplerate
+                x_values += stream.end_timestamp - len(signal_value_array) / stream.samplerate
                 
                 if stream_name == "acceleration":
                     for line_i, line in enumerate(self.acceleration_lines):
@@ -83,7 +81,7 @@ class VisualizationWindow:
             self.axes[0].set_xlim((now - 115, now + 5))
             
             matplotlib.pyplot.draw()
-            time.sleep(0.2)
+            time.sleep(1.0)
     
     def show(self):
         threading.Thread(target=self.update_plots).start()

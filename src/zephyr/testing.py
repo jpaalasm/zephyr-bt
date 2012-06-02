@@ -58,6 +58,7 @@ def visualize_measurements(signal_collector):
     acceleration_stream = signal_collector.get_signal_stream("acceleration")
     breathing_stream = signal_collector.get_signal_stream("breathing")
     ecg_stream = signal_collector.get_signal_stream("ecg")
+    heartbeat_interval_stream = signal_collector.get_event_stream("heartbeat_interval")
     
     ax1 = pylab.subplot(4,1,1)
     ax2 = pylab.subplot(4,1,2,sharex=ax1)
@@ -76,9 +77,14 @@ def visualize_measurements(signal_collector):
     ecg_x_values /= ecg_stream.samplerate
     ecg_x_values += ecg_stream.start_timestamp
     
+    
+    heartbeat_interval_timestamps, heartbeat_intervals = zip(*heartbeat_interval_stream)
+    
     ax1.plot(breathing_x_values, breathing_stream.samples)
     ax2.plot(ecg_x_values, ecg_stream.samples)
     ax3.plot(acceleration_x_values, numpy.array(acceleration_stream.samples))
+    
+    ax4.plot(heartbeat_interval_timestamps, heartbeat_intervals, "+-")
     
     ax4.set_ylim((0, 1.5))
     

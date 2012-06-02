@@ -19,6 +19,30 @@ SignalPacket = collections.namedtuple("SignalPacket", ["type", "timestamp", "sam
                                                        "samples", "sequence_number"])
 
 
+
+
+#Specification of HxM payload bytes:
+#Firmware ID
+#Firmware Version
+#Hardware ID
+#Hardware Version
+#Battery Charge Indicator
+#Heart Rate
+#Heart Beat Number
+#Heart Beat Timestamp #1 (Oldest)
+#Heart Beat Timestamp #2
+#...
+#Heart Beat Timestamp #14
+#Heart Beat Timestamp #15 (Oldest)
+#Reserved
+#Reserved
+#Reserved
+#Distance
+#Instantaneous speed
+#Strides
+#Reserved
+#Reserved
+
 def parse_hxm_message(payload):
     heart_rate, heartbeat_number = payload[9:11]
     
@@ -39,16 +63,6 @@ def parse_hxm_message(payload):
     return hxm_message
 
 
-def uint16_from_two_bytes((byte1, byte2)):
-    return byte1 + (byte2 << 8)
-
-
-def parse_uint16_values_from_byte_sequence(ls_byte_indices, byte_sequence):
-    values = [uint16_from_two_bytes(byte_sequence[index:index + 2])
-              for index in ls_byte_indices]
-    return values
-
-
 def parse_summary_packet(payload):
     sequence_number = payload[0]
     
@@ -56,7 +70,7 @@ def parse_summary_packet(payload):
     
     (heart_rate, respiration_rate, skin_temperature, posture, activity,
      peak_acceleration, breathing_wave_amplitude) = \
-        parse_uint16_values_from_byte_sequence([10, 12, 14, 16, 18, 20, 25], payload)
+        zephyr.util.parse_uint16_values_from_byte_sequence([10, 12, 14, 16, 18, 20, 25], payload)
     
     respiration_rate *= 0.1
     skin_temperature *= 0.1
@@ -116,8 +130,20 @@ def parse_accelerometer_samples(signal_bytes):
     return samples
 
 
+class MessagePayloadParser:
+    def __init__(self, callback):
+        self.callback = callback
+    
+    def handle_message(self, message_frame):
+        handler = MESSAGE_TYPES.get(message_frame.message_id)
+        if handler is not None:
+            message = handler(message_frame.payload)
+            self.callback(message)
+
+
 MESSAGE_TYPES = {0x2B: parse_summary_packet,
                  0x21: signal_packet_payload_parser_factory(parse_10_bit_samples, "breathing", 18.0),
                  0x22: signal_packet_payload_parser_factory(parse_10_bit_samples, "ecg", 250.0),
                  0x24: signal_packet_payload_parser_factory(parse_16_bit_samples, "rr", 18.0),
-                 0x25: signal_packet_payload_parser_factory(parse_accelerometer_samples, "acceleration", 50.0)}
+                 0x25: signal_packet_payload_parser_factory(parse_accelerometer_samples, "acceleration", 50.0),
+                 0x26: parse_hxm_message}
