@@ -12,24 +12,19 @@ class MessageDataLogger:
         self.timing_file = file(log_file_basepath + "-timing.csv", "wb")
         self.timing_file_csv_writer = csv.writer(self.timing_file)
         
-        self.start_time = None
         self.time_before = None
     
     def __call__(self, stream_bytes):
-        if self.start_time is None:
-            now = time.time()
-            self.start_time = now
-            self.time_before = now
+        if self.time_before is None:
+            self.time_before = time.time()
         
         delay = time.time() - self.time_before
-        
-        relative_previous_chunk_time = self.time_before - self.start_time
         
         data_file_position = self.data_file.tell()
         
         if delay > 0.01 and data_file_position:
-            self.timing_file_csv_writer.writerow((relative_previous_chunk_time, data_file_position))
-            print relative_previous_chunk_time, data_file_position
+            self.timing_file_csv_writer.writerow((self.time_before, data_file_position))
+            print self.time_before, data_file_position
         
         self.data_file.write(stream_bytes)
         
