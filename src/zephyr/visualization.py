@@ -1,14 +1,20 @@
 
 import numpy
 import time
-import threading
 import matplotlib.pyplot
 from matplotlib.animation import FuncAnimation
+
 
 class VisualizationWindow:
     def __init__(self, signal_collector):
         self.figure, self.axes = matplotlib.pyplot.subplots(7, 1, sharex=True)
         self.figure.subplots_adjust(hspace=0)
+        
+        ax_ylabels = ["3D accel.", "Breathing", "ECG", 
+                      "Resp. rate", "HR", "HBI", "Activity"]
+        
+        for ylabel, ax in zip(ax_ylabels, self.axes):
+            ax.set_ylabel(ylabel)
         
         self.signal_collector = signal_collector
         
