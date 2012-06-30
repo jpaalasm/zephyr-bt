@@ -45,8 +45,28 @@ class Protocol:
         message_frame = create_message_frame(message_id, payload)
         self.connection.write(message_frame)
     
-    def read_and_handle_bytes(self, num_bytes):
-        data_string = self.connection.read(num_bytes)
+    def read_and_handle_byte(self):
+        data_string = self.connection.read(1)
+        
+        timeout_occurred = hasattr(self.connection, "timeout") and not len(data_string)
+        
+        if timeout_occurred:
+            logging.info("Timeout occurred, closing port")
+            self.connection.close()
+            
+            retries = 10
+            for retry_i in range(retries):
+                try:
+                    self.connection.open()
+                except Exception as e:
+                    logging.info("Re-opening port failed, retry %d (%s)", retry_i, e)
+                    continue
+                
+                logging.info("Re-opening port successful")
+                break
+            else:
+                raise OSError("Unable to re-open")
+        
         self.message_parser.parse_data(data_string)
         self.message_logger(data_string)
         return data_string
@@ -54,7 +74,7 @@ class Protocol:
     def read_and_handle_forever(self):
         try:
             while True:
-                self.read_and_handle_bytes(1)
+                self.read_and_handle_byte()
         except KeyboardInterrupt:
             logging.info("Received Ctrl-C, exiting")
 

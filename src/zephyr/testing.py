@@ -47,7 +47,8 @@ class FilePacketSimulator(threading.Thread):
                 break
             
             bytes_to_read = chunk_cumulative_byte_count - bytes_read
-            connection.read_and_handle_bytes(bytes_to_read)
+            for i in range(bytes_to_read):
+                connection.read_and_handle_byte()
             bytes_read = chunk_cumulative_byte_count
 
 

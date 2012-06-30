@@ -17,7 +17,7 @@ def reading_thread(protocol):
     start_time = time.time()
     
     while time.time() < start_time + 120:
-        protocol.read_and_handle_bytes(1)
+        protocol.read_and_handle_byte()
 
 
 def create_data_files(input_definitions):
