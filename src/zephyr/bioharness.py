@@ -24,11 +24,8 @@ class BioHarnessSignalAnalysis:
                     heartbeat_interval = abs(rr_value)
                     heartbeat_interval_timestamp = signal_packet.timestamp + sample_number / float(signal_packet.samplerate)
                     
-                    print signal_packet.timestamp, heartbeat_interval_timestamp, heartbeat_interval
-                    
                     for event_callback in self.event_callbacks:
                         event_callback("heartbeat_interval", (heartbeat_interval_timestamp, heartbeat_interval))
-                        
                 
                 self.latest_rr_value_sign = rr_value_sign
 
