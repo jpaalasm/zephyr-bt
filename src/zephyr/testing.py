@@ -26,19 +26,21 @@ class FilePacketSimulator(threading.Thread):
     
     def run(self):
         input_file = open(self.stream_data_path, "rb")
-        timings = csv.reader(open(self.timing_data_path))
-        
-        connection = zephyr.protocol.Protocol(input_file, self.packet_handler)
+        timings = list(csv.reader(open(self.timing_data_path)))
         
         start_time = time.time()
+        first_timestamp = float(timings[0][0])
+        timestamp_correction = start_time - first_timestamp
+        
+        connection = zephyr.protocol.Protocol(input_file, self.packet_handler)
         
         bytes_read = 0
         
         for chunk_timestamp_string, chunk_cumulative_byte_count_string in timings:
-            chunk_timestamp = float(chunk_timestamp_string)
+            chunk_timestamp = float(chunk_timestamp_string) + timestamp_correction
             chunk_cumulative_byte_count = int(chunk_cumulative_byte_count_string)
             
-            time_to_sleep = chunk_timestamp - (time.time() - start_time)
+            time_to_sleep = chunk_timestamp - time.time()
             
             if self.sleeping and time_to_sleep > 0:
                 time.sleep(time_to_sleep)
@@ -49,6 +51,7 @@ class FilePacketSimulator(threading.Thread):
             bytes_to_read = chunk_cumulative_byte_count - bytes_read
             for i in range(bytes_to_read):
                 connection.read_and_handle_byte()
+            
             bytes_read = chunk_cumulative_byte_count
 
 
