@@ -16,9 +16,9 @@ class MessageDataLogger:
     
     def __call__(self, stream_bytes):
         if self.time_before is None:
-            self.time_before = time.time()
+            self.time_before = zephyr.time()
         
-        delay = time.time() - self.time_before
+        delay = zephyr.time() - self.time_before
         
         data_file_position = self.data_file.tell()
         
@@ -28,7 +28,7 @@ class MessageDataLogger:
         
         self.data_file.write(stream_bytes)
         
-        self.time_before = time.time()
+        self.time_before = zephyr.time()
 
 
 class Protocol:

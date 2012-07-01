@@ -28,7 +28,7 @@ class FilePacketSimulator(threading.Thread):
         input_file = open(self.stream_data_path, "rb")
         timings = list(csv.reader(open(self.timing_data_path)))
         
-        start_time = time.time()
+        start_time = zephyr.time()
         first_timestamp = float(timings[0][0])
         timestamp_correction = start_time - first_timestamp
         
@@ -40,7 +40,7 @@ class FilePacketSimulator(threading.Thread):
             chunk_timestamp = float(chunk_timestamp_string) + timestamp_correction
             chunk_cumulative_byte_count = int(chunk_cumulative_byte_count_string)
             
-            time_to_sleep = chunk_timestamp - time.time()
+            time_to_sleep = chunk_timestamp - zephyr.time()
             
             if self.sleeping and time_to_sleep > 0:
                 time.sleep(time_to_sleep)

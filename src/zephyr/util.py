@@ -3,6 +3,7 @@ import time
 import datetime
 import collections
 
+import zephyr
 
 def crc_8_digest(values):
     crc = 0
@@ -91,7 +92,7 @@ class ClockDifferenceEstimator:
         if DISABLE_CLOCK_DIFFERENCE_ESTIMATION:
             return timestamp
         
-        instantaneous_zephyr_clock_ahead = timestamp - time.time()
+        instantaneous_zephyr_clock_ahead = timestamp - zephyr.time()
         self._clock_difference_deques[key].append(instantaneous_zephyr_clock_ahead)
         
         clock_ahead_values = self._clock_difference_deques[key]

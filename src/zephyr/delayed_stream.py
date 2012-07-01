@@ -4,6 +4,8 @@ import collections
 import time
 import logging
 
+import zephyr
+
 class DelayedRealTimeStream(threading.Thread):
     def __init__(self, signal_collector, callback, delay=2.0):
         threading.Thread.__init__(self)
@@ -23,7 +25,7 @@ class DelayedRealTimeStream(threading.Thread):
         time.sleep(self.delay + 1.0)
         
         while not self.terminate_requested:
-            delayed_current_time = time.time() - self.delay
+            delayed_current_time = zephyr.time() - self.delay
             
             for stream_name, stream in self.signal_collector.iterate_signal_streams():
                 stream_start_timestamp = stream.end_timestamp - len(stream.samples) / float(stream.samplerate)

@@ -1,6 +1,7 @@
 
 import os
 import logging
+from time import time as system_time
 
 def configure_root_logger():
     logger = logging.getLogger()
@@ -20,3 +21,7 @@ def configure_root_logger():
     logger.addHandler(file_handler)
     
     logging.info("Logging to %s", log_file_path)
+
+# pyzephyr has its own time function so that it can be mocked for testing purposes
+def time():
+    return system_time()

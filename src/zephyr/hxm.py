@@ -8,7 +8,7 @@ class HxMHelper:
     def __init__(self, packet):
         latest_heartbeat_timestamp = packet.heartbeat_timestamps[0]
         self.previous_heartbeat_number = packet.heartbeat_number
-        self.offset = time.time() - latest_heartbeat_timestamp
+        self.offset = zephyr.time() - latest_heartbeat_timestamp
         self.previous_relative_timestamp = latest_heartbeat_timestamp
     
     def fix_relative_timestamps(self, timestamps):
@@ -45,7 +45,7 @@ class HxMPacketAnalysis:
     
     def handle_packet(self, packet):
         if isinstance(packet, zephyr.message.HxMMessage):
-            current_timestamp = time.time()
+            current_timestamp = zephyr.time()
             
             if self.helper is None:
                 self.helper = HxMHelper(packet)
