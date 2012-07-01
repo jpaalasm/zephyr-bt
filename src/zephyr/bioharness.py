@@ -51,20 +51,6 @@ class BioHarnessPacketHandler:
         
         return expected_sequence_number
     
-    def handle_acceleration_packet(self, starts_new_stream, acceleration_packet):
-        sample_lists = zip(*acceleration_packet.samples)
-        type_codes = "x", "y", "z"
-        
-        for type_code, samples in zip(type_codes, sample_lists):
-            signal_type = "acceleration_" + type_code
-            acceleration_signal_packet = acceleration_packet._replace(samples=samples, type=signal_type)
-            
-            self.handle_general_signal_packet(starts_new_stream, acceleration_signal_packet)
-    
-    def handle_general_signal_packet(self, starts_new_stream, corrected_signal_packet):
-        for signal_callback in self.signal_callbacks:
-            signal_callback(corrected_signal_packet, starts_new_stream)
-    
     def handle_packet(self, packet):
         if isinstance(packet, zephyr.message.SignalPacket):
             expected_sequence_number = self.get_expected_sequence_number(packet.type)
@@ -87,10 +73,8 @@ class BioHarnessPacketHandler:
             
             corrected_signal_packet = packet._replace(timestamp=corrected_timestamp)
             
-            if corrected_signal_packet.type == "acceleration":
-                self.handle_acceleration_packet(starts_new_stream, corrected_signal_packet)
-            else:
-                self.handle_general_signal_packet(starts_new_stream, corrected_signal_packet)
+            for signal_callback in self.signal_callbacks:
+                signal_callback(corrected_signal_packet, starts_new_stream)
         
         elif isinstance(packet, zephyr.message.SummaryMessage):
             corrected_timestamp = self.clock_difference_correction.estimate_and_correct_timestamp(packet.timestamp, "bh_summary")
