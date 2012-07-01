@@ -5,6 +5,22 @@ import collections
 
 import zephyr
 
+
+class FastTime:
+    def __init__(self, speed):
+        self.start_time = time.time()
+        self.speed = speed
+    
+    def __call__(self):
+        seconds_since_start = time.time() - self.start_time
+        now = self.start_time + seconds_since_start * self.speed
+        return now
+
+
+def set_time_speed(simulation_speed):
+    zephyr.time = FastTime(simulation_speed)
+
+
 def crc_8_digest(values):
     crc = 0
     
