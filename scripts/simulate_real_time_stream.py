@@ -11,14 +11,10 @@ from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler
 from zephyr.delayed_stream import DelayedRealTimeStream
 from zephyr.message import MessagePayloadParser
 from zephyr.testing import FilePacketSimulator, test_data_dir
-from zephyr.visualization import VisualizationWindow
 
 
 def callback(value_name, value):
-    if value_name == "rr_event":
-        print "                      ",
-        print "%020s %s" % (value_name, value)
-
+    print value_name, value
 
 def main():
     zephyr.configure_root_logger()
@@ -38,13 +34,8 @@ def main():
                                             payload_parser.handle_message)
     
     delayed_stream_thread.start()
-    simulation_thread.start()
     
-    visualization = VisualizationWindow(collector)
-    visualization.show()
-    
-    simulation_thread.terminate()
-    simulation_thread.join()
+    simulation_thread.run()
     
     delayed_stream_thread.terminate()
     delayed_stream_thread.join()

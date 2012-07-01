@@ -10,7 +10,6 @@ import zephyr.signal
 import zephyr.events
 import zephyr.delayed_stream
 import zephyr.testing
-import zephyr.visualization
 
 
 def callback(value_name, value):
@@ -42,10 +41,7 @@ def main():
     
     delayed_stream_thread.start()
     
-    threading.Thread(target=protocol.read_and_handle_forever).start()
-    
-    visualization = zephyr.visualization.VisualizationWindow(signal_collector)
-    visualization.run()
+    protocol.read_and_handle_forever()
     
     stream_thread.terminate()
     stream_thread.join()
