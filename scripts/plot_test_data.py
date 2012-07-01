@@ -1,6 +1,4 @@
 
-import time
-
 import zephyr.util
 from zephyr.collector import MeasurementCollector
 from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler

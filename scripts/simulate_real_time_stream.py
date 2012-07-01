@@ -1,6 +1,5 @@
 
 import threading
-import time
 import collections
 import numpy
 import matplotlib.pyplot
