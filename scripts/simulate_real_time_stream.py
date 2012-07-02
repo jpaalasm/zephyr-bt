@@ -26,7 +26,7 @@ def main():
     
     payload_parser = MessagePayloadParser(signal_packet_handler.handle_packet)
     
-    delayed_stream_thread = DelayedRealTimeStream(collector, callback)
+    delayed_stream_thread = DelayedRealTimeStream(collector, [callback])
     
     simulation_thread = FilePacketSimulator(test_data_dir + "/120-second-bt-stream.dat",
                                             test_data_dir + "/120-second-bt-stream-timing.csv",

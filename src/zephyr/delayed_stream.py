@@ -6,10 +6,10 @@ import time
 import zephyr
 
 class DelayedRealTimeStream(threading.Thread):
-    def __init__(self, signal_collector, callback, delay=2.0):
+    def __init__(self, signal_collector, callbacks, delay=2.0):
         threading.Thread.__init__(self)
         self.signal_collector = signal_collector
-        self.callback = callback
+        self.callbacks = callbacks
         self.delay = delay
         
         self.stream_output_positions = collections.defaultdict(lambda: 0)
@@ -30,7 +30,8 @@ class DelayedRealTimeStream(threading.Thread):
                 from_sample = self.stream_output_positions[stream_name]
                 for sample in stream_history.iterate_samples(from_sample, delayed_current_time):
                     self.stream_output_positions[stream_name] += 1
-                    self.callback(stream_name, sample)
+                    for callback in self.callbacks:
+                        callback(stream_name, sample)
             
             for stream_name, stream in self.signal_collector.iterate_event_streams():
                 output_position = self.stream_output_positions[stream_name]
@@ -39,7 +40,8 @@ class DelayedRealTimeStream(threading.Thread):
                     event_timestamp, event_value = stream[output_position]
                     
                     if event_timestamp <= delayed_current_time:
-                        self.callback(stream_name, event_value)
                         self.stream_output_positions[stream_name] += 1
+                        for callback in self.callbacks:
+                            callback(stream_name, event_value)
             
             time.sleep(0.01)
