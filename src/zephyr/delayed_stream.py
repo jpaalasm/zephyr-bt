@@ -20,9 +20,6 @@ class DelayedRealTimeStream(threading.Thread):
         self.terminate_requested = True
     
     def run(self):
-        # Wait so that all signal streams have been initialized
-        time.sleep(self.delay + 1.0)
-        
         while not self.terminate_requested:
             delayed_current_time = zephyr.time() - self.delay
             
