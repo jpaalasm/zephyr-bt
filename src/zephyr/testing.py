@@ -59,35 +59,37 @@ def visualize_measurements(signal_collector):
     import numpy
     import pylab
     
-    acceleration_stream = signal_collector.get_signal_stream("acceleration")
-    breathing_stream = signal_collector.get_signal_stream("breathing")
-    ecg_stream = signal_collector.get_signal_stream("ecg")
-    heartbeat_interval_stream = signal_collector.get_event_stream("heartbeat_interval")
     
     ax1 = pylab.subplot(4,1,1)
     ax2 = pylab.subplot(4,1,2,sharex=ax1)
     ax3 = pylab.subplot(4,1,3,sharex=ax1)
     ax4 = pylab.subplot(4,1,4,sharex=ax1)
     
-    breathing_x_values = numpy.arange(len(breathing_stream.samples), dtype=float)
-    breathing_x_values /= breathing_stream.samplerate
-    breathing_x_values += breathing_stream.start_timestamp
     
-    acceleration_x_values = numpy.arange(len(acceleration_stream.samples), dtype=float)
-    acceleration_x_values /= acceleration_stream.samplerate
-    acceleration_x_values += acceleration_stream.start_timestamp
+    breathing_stream_history = signal_collector.get_signal_stream_history("breathing")
+    for breathing_stream in breathing_stream_history.get_signal_streams():
+        breathing_x_values = numpy.arange(len(breathing_stream.samples), dtype=float)
+        breathing_x_values /= breathing_stream.samplerate
+        breathing_x_values += breathing_stream.start_timestamp
+        ax1.plot(breathing_x_values, breathing_stream.samples)
     
-    ecg_x_values = numpy.arange(len(ecg_stream.samples), dtype=float)
-    ecg_x_values /= ecg_stream.samplerate
-    ecg_x_values += ecg_stream.start_timestamp
+    ecg_stream_history = signal_collector.get_signal_stream_history("ecg")
+    for ecg_stream in ecg_stream_history.get_signal_streams():
+        ecg_x_values = numpy.arange(len(ecg_stream.samples), dtype=float)
+        ecg_x_values /= ecg_stream.samplerate
+        ecg_x_values += ecg_stream.start_timestamp
+        ax2.plot(ecg_x_values, ecg_stream.samples)
+    
+    acceleration_stream_history = signal_collector.get_signal_stream_history("acceleration")
+    for acceleration_stream in acceleration_stream_history.get_signal_streams():
+        acceleration_x_values = numpy.arange(len(acceleration_stream.samples), dtype=float)
+        acceleration_x_values /= acceleration_stream.samplerate
+        acceleration_x_values += acceleration_stream.start_timestamp
+        ax3.plot(acceleration_x_values, numpy.array(acceleration_stream.samples))
     
     
+    heartbeat_interval_stream = signal_collector.get_event_stream("heartbeat_interval")
     heartbeat_interval_timestamps, heartbeat_intervals = zip(*heartbeat_interval_stream)
-    
-    ax1.plot(breathing_x_values, breathing_stream.samples)
-    ax2.plot(ecg_x_values, ecg_stream.samples)
-    ax3.plot(acceleration_x_values, numpy.array(acceleration_stream.samples))
-    
     ax4.plot(heartbeat_interval_timestamps, heartbeat_intervals, "+-")
     
     ax4.set_ylim((0, 1.5))

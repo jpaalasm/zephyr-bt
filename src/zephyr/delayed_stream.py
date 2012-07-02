@@ -2,7 +2,6 @@
 import threading
 import collections
 import time
-import logging
 
 import zephyr
 
@@ -27,21 +26,11 @@ class DelayedRealTimeStream(threading.Thread):
         while not self.terminate_requested:
             delayed_current_time = zephyr.time() - self.delay
             
-            for stream_name, stream in self.signal_collector.iterate_signal_streams():
-                stream_start_timestamp = stream.end_timestamp - len(stream.samples) / float(stream.samplerate)
-                
-                stream_sample_index = int((delayed_current_time - stream_start_timestamp) * stream.samplerate)
-                
-                output_position = self.stream_output_positions[stream_name]
-                
-                if stream_sample_index > output_position:
-                    if stream_sample_index < len(stream.samples):
-                        delayed_value = stream.samples[stream_sample_index]
-                        self.callback(stream_name, delayed_value)
-                        self.stream_output_positions[stream_name] = stream_sample_index
-                    else:
-                        missing_seconds = (stream_sample_index - len(stream.samples)) / stream.samplerate
-                        logging.warning("%s: %1.3f sec of data missing (%d %d)", stream_name, missing_seconds, stream_sample_index, output_position)
+            for stream_name, stream_history in self.signal_collector.iterate_signal_stream_histories():
+                from_sample = self.stream_output_positions[stream_name]
+                for sample in stream_history.iterate_samples(from_sample, delayed_current_time):
+                    self.stream_output_positions[stream_name] += 1
+                    self.callback(stream_name, sample)
             
             for stream_name, stream in self.signal_collector.iterate_event_streams():
                 output_position = self.stream_output_positions[stream_name]
