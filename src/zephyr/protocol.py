@@ -1,10 +1,10 @@
 
-import time
 import csv
+import time
 import logging
+import threading
 
 import zephyr.util
-import threading
 
 
 class MessageDataLogger:
@@ -61,12 +61,13 @@ class Protocol(threading.Thread):
             logging.info("Timeout occurred, closing port")
             self.connection.close()
             
-            retries = 10
+            retries = 100
             for retry_i in range(retries):
                 try:
                     self.connection.open()
                 except Exception as e:
                     logging.info("Re-opening port failed, retry %d (%s)", retry_i, e)
+                    time.sleep(1.0)
                     continue
                 
                 logging.info("Re-opening port successful")
