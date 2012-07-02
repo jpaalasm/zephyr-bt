@@ -40,7 +40,7 @@ def main():
     
     delayed_stream_thread.start()
     
-    protocol.read_and_handle_forever()
+    protocol.run()
     
     stream_thread.terminate()
     stream_thread.join()

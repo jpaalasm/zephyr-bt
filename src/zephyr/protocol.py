@@ -4,6 +4,7 @@ import csv
 import logging
 
 import zephyr.util
+import threading
 
 
 class MessageDataLogger:
@@ -31,15 +32,21 @@ class MessageDataLogger:
         self.time_before = zephyr.time()
 
 
-class Protocol:
+class Protocol(threading.Thread):
     def __init__(self, connection, callback, log_file_basepath=None):
+        super(Protocol, self).__init__()
         self.connection = connection
         self.message_parser = MessageFrameParser(callback)
+        
+        self.terminated = False
         
         if log_file_basepath is not None:
             self.message_logger = MessageDataLogger(log_file_basepath)
         else:
             self.message_logger = lambda x: None
+    
+    def terminate(self):
+        self.terminated = True
     
     def send_message(self, message_id, payload):
         message_frame = create_message_frame(message_id, payload)
@@ -71,12 +78,9 @@ class Protocol:
         self.message_logger(data_string)
         return data_string
     
-    def read_and_handle_forever(self):
-        try:
-            while True:
-                self.read_and_handle_byte()
-        except KeyboardInterrupt:
-            logging.info("Received Ctrl-C, exiting")
+    def run(self):
+        while not self.terminated:
+            self.read_and_handle_byte()
 
 
 class BioHarnessProtocol(Protocol):
