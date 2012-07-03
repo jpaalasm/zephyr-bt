@@ -33,7 +33,7 @@ def main():
     
     payload_parser = MessagePayloadParser(signal_packet_handler.handle_packet)
     
-    delayed_stream_thread = DelayedRealTimeStream(collector, [callback])
+    delayed_stream_thread = DelayedRealTimeStream(collector, [callback], 1.2)
     
     protocol = zephyr.protocol.BioHarnessProtocol(ser, payload_parser.handle_message)
     protocol.enable_periodic_packets()

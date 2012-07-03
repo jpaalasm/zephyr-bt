@@ -6,7 +6,7 @@ import time
 import zephyr
 
 class DelayedRealTimeStream(threading.Thread):
-    def __init__(self, signal_collector, callbacks, delay=2.0):
+    def __init__(self, signal_collector, callbacks, delay):
         threading.Thread.__init__(self)
         self.signal_collector = signal_collector
         self.callbacks = callbacks
