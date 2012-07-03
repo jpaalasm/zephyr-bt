@@ -1,44 +1,55 @@
 
+import threading
 import collections
+
+import zephyr
 
 
 class SignalStream:
     def __init__(self, signal_packet):
         self.samplerate = signal_packet.samplerate
-        self.samples = []
+        self.samples = collections.deque()
+        self.lock = threading.RLock()
         
         self.end_timestamp = None
         self.append_signal_packet(signal_packet)
     
     def append_signal_packet(self, signal_packet):
-        assert signal_packet.samplerate == self.samplerate
+        with self.lock:
+            assert signal_packet.samplerate == self.samplerate
+            
+            self.samples.extend(signal_packet.samples)
+            self.end_timestamp = signal_packet.timestamp + len(signal_packet.samples) / float(signal_packet.samplerate)
+    
+    def remove_samples_before(self, timestamp_lower_bound):
+        with self.lock:
+            samples_to_remove = max(0, int((timestamp_lower_bound - self.start_timestamp) * self.samplerate))
+            
+            for i in range(samples_to_remove):
+                self.samples.popleft()
         
-        self.samples.extend(signal_packet.samples)
-        self.end_timestamp = signal_packet.timestamp + len(signal_packet.samples) / float(signal_packet.samplerate)
+        return samples_to_remove
     
     @property
     def start_timestamp(self):
         return self.end_timestamp - len(self.samples) / float(self.samplerate)
     
     def iterate_timed_samples(self):
-        start_timestamp = self.start_timestamp
-        sample_period = 1.0 / self.samplerate
-        
-        for sample_i, sample in enumerate(self.samples):
-            sample_timestamp = start_timestamp + sample_i * sample_period
-            yield sample_timestamp, sample
+        with self.lock:
+            start_timestamp = self.start_timestamp
+            sample_period = 1.0 / self.samplerate
+            
+            for sample_i, sample in enumerate(self.samples):
+                sample_timestamp = start_timestamp + sample_i * sample_period
+                yield sample_timestamp, sample
 
 
 class SignalStreamHistory:
     def __init__(self):
         self._signal_streams = []
+        
+        self.samples_cleaned_up = 0
     
-    def get_total_sample_count(self):
-        return sum(len(stream.samples) for stream in self._signal_streams)
-    
-    def append_stream(self, signal_stream):
-        self._signal_streams.append(signal_stream)
-
     def append_signal_packet(self, signal_packet, starts_new_stream):
         if starts_new_stream or not len(self._signal_streams):
             signal_stream = SignalStream(signal_packet)
@@ -50,7 +61,27 @@ class SignalStreamHistory:
     def get_signal_streams(self):
         return self._signal_streams
     
+    def _cleanup_signal_stream(self, signal_stream, timestamp_bound):
+        if timestamp_bound >= signal_stream.end_timestamp:
+            self._signal_streams.remove(signal_stream)
+            samples_removed = len(signal_stream.samples)
+        else:
+            samples_removed = signal_stream.remove_samples_before(timestamp_bound)
+        
+        self.samples_cleaned_up += samples_removed
+    
+    def clean_up_samples_before(self, history_limit):
+        for signal_stream in self._signal_streams[:]:
+            first_timestamp = signal_stream.start_timestamp
+            
+            if first_timestamp >= history_limit:
+                break
+            
+            self._cleanup_signal_stream(signal_stream, history_limit)
+    
     def iterate_samples(self, from_sample_index, to_end_timestamp):
+        from_sample_index = from_sample_index - self.samples_cleaned_up
+        
         signal_stream_start_index = 0
         for signal_stream in self._signal_streams:
             sample_count = len(signal_stream.samples)
@@ -71,7 +102,7 @@ class SignalStreamHistory:
 
 
 class MeasurementCollector:
-    def __init__(self):
+    def __init__(self, history_length_seconds=20.0):
         self._signal_stream_histories = collections.defaultdict(SignalStreamHistory)
         self._event_streams = {}
         
@@ -80,6 +111,9 @@ class MeasurementCollector:
         self.initialize_event_stream("respiration_rate")
         
         self.initialize_event_stream("heartbeat_interval")
+        
+        self.history_length_seconds = history_length_seconds
+        self.last_cleanup_time = 0.0
     
     def get_signal_stream_history(self, stream_type):
         return self._signal_stream_histories[stream_type]
@@ -95,11 +129,32 @@ class MeasurementCollector:
     
     def initialize_event_stream(self, stream_name):
         assert stream_name not in self._event_streams
-        self._event_streams[stream_name] = []
+        self._event_streams[stream_name] = collections.deque()
     
     def handle_signal(self, signal_packet, starts_new_stream):
         signal_stream_history = self._signal_stream_histories[signal_packet.type]
         signal_stream_history.append_signal_packet(signal_packet, starts_new_stream)
+        self.cleanup_if_needed()
     
     def handle_event(self, stream_name, value):
         self._event_streams[stream_name].append(value)
+        self.cleanup_if_needed()
+    
+    def cleanup_if_needed(self):
+        now = zephyr.time()
+        
+        if self.last_cleanup_time < now - 5.0:
+            history_limit = now - self.history_length_seconds
+            for signal_stream_history in self._signal_stream_histories.values():
+                signal_stream_history.clean_up_samples_before(history_limit)
+            
+            for event_stream in self._event_streams.values():
+                while len(event_stream):
+                    first_timestamp = event_stream[0][0]
+                    
+                    if first_timestamp >= history_limit:
+                        break
+                    
+                    event_stream.popleft()
+            
+            self.last_cleanup_time = now
