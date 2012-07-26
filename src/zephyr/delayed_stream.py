@@ -23,22 +23,28 @@ class DelayedRealTimeStream(threading.Thread):
         while not self.terminate_requested:
             delayed_current_time = zephyr.time() - self.delay
             
-            for stream_name, stream_history in self.signal_collector.iterate_signal_stream_histories():
-                from_sample = self.stream_output_positions[stream_name]
-                for sample in stream_history.iterate_samples(from_sample, delayed_current_time):
-                    self.stream_output_positions[stream_name] += 1
+            for signal_stream_name, signal_stream_history in self.signal_collector.iterate_signal_stream_histories():
+                from_sample = self.stream_output_positions[signal_stream_name]
+                for sample in signal_stream_history.iterate_samples(from_sample, delayed_current_time):
+                    self.stream_output_positions[signal_stream_name] += 1
                     for callback in self.callbacks:
-                        callback(stream_name, sample)
+                        callback(signal_stream_name, sample)
             
-            for stream_name, stream in self.signal_collector.iterate_event_streams():
-                output_position = self.stream_output_positions[stream_name]
-                
-                if len(stream) > output_position:
-                    event_timestamp, event_value = stream[output_position]
+            for event_stream_name, event_stream in self.signal_collector.iterate_event_streams():
+                while True:
+                    output_position = self.stream_output_positions[event_stream_name]
                     
-                    if event_timestamp <= delayed_current_time:
-                        self.stream_output_positions[stream_name] += 1
-                        for callback in self.callbacks:
-                            callback(stream_name, event_value)
+                    if len(event_stream) > output_position:
+                        event_timestamp, event_value = event_stream[output_position]
+                        
+                        if event_timestamp <= delayed_current_time:
+                            self.stream_output_positions[event_stream_name] += 1
+                            
+                            for callback in self.callbacks:
+                                callback(event_stream_name, event_value)
+                            
+                            continue
+                    
+                    break
             
             time.sleep(0.01)
