@@ -5,6 +5,45 @@ import collections
 import zephyr
 
 
+class EventStream:
+    def __init__(self):
+        self.deque = collections.deque()
+        self.events_cleaned_up = 0
+        self.lock = threading.RLock()
+    
+    def __iter__(self):
+        with self.lock:
+            return iter(list(self.deque))
+    
+    def __len__(self):
+        with self.lock:
+            corrected_length = len(self.deque) + self.events_cleaned_up
+            return corrected_length
+    
+    def __getitem__(self, index):
+        with self.lock:
+            assert 0 <= index < len(self)
+            assert index >= self.events_cleaned_up
+            
+            corrected_index = index - self.events_cleaned_up
+            return self.deque[corrected_index]
+    
+    def append(self, value):
+        with self.lock:
+            self.deque.append(value)
+    
+    def clean_up_events_before(self, timestamp_lower_bound):
+        with self.lock:
+            while len(self.deque):
+                first_timestamp = self.deque[0][0]
+                
+                if first_timestamp >= timestamp_lower_bound:
+                    break
+                
+                self.deque.popleft()
+                self.events_cleaned_up += 1
+
+
 class SignalStream:
     def __init__(self, signal_packet):
         self.samplerate = signal_packet.samplerate
@@ -129,7 +168,7 @@ class MeasurementCollector:
     
     def initialize_event_stream(self, stream_name):
         assert stream_name not in self._event_streams
-        self._event_streams[stream_name] = collections.deque()
+        self._event_streams[stream_name] = EventStream()
     
     def handle_signal(self, signal_packet, starts_new_stream):
         signal_stream_history = self._signal_stream_histories[signal_packet.type]
@@ -149,12 +188,6 @@ class MeasurementCollector:
                 signal_stream_history.clean_up_samples_before(history_limit)
             
             for event_stream in self._event_streams.values():
-                while len(event_stream):
-                    first_timestamp = event_stream[0][0]
-                    
-                    if first_timestamp >= history_limit:
-                        break
-                    
-                    event_stream.popleft()
+                event_stream.clean_up_events_before(history_limit)
             
             self.last_cleanup_time = now
