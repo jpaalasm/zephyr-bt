@@ -42,6 +42,20 @@ class EventStream:
                 
                 self.deque.popleft()
                 self.events_cleaned_up += 1
+    
+    def iterate_samples(self, from_sample_index, to_end_timestamp):
+        sample_index = from_sample_index
+        
+        while True:
+            if len(self) > sample_index:
+                event_timestamp, event_value = self[sample_index]
+                
+                if event_timestamp <= to_end_timestamp:
+                    yield event_value
+                    sample_index += 1
+                    continue
+            
+            break
 
 
 class SignalStream:
