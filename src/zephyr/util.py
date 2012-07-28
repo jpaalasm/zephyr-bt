@@ -17,8 +17,17 @@ class FastTime:
         return now
 
 
+class FastSleep:
+    def __init__(self, speed):
+        self.speed = speed
+    
+    def __call__(self, seconds):
+        time.sleep(seconds / self.speed)
+
+
 def set_time_speed(simulation_speed):
     zephyr.time = FastTime(simulation_speed)
+    zephyr.sleep = FastSleep(simulation_speed)
 
 
 def crc_8_digest(values):

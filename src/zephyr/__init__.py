@@ -2,6 +2,7 @@
 import os
 import logging
 from time import time as system_time
+from time import sleep as system_sleep
 
 def configure_root_logger():
     logger = logging.getLogger()
@@ -25,3 +26,6 @@ def configure_root_logger():
 # pyzephyr has its own time function so that it can be mocked for testing purposes
 def time():
     return system_time()
+
+def sleep(seconds):
+    system_sleep(seconds)
