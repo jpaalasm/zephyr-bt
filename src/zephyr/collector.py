@@ -36,7 +36,7 @@ class EventStream:
         with self.lock:
             cutoff_index = 0
             
-            for event_timestamp, event_value in self.events:
+            for event_timestamp, event_value in self.events: #@UnusedVariable
                 if event_timestamp < timestamp_lower_bound:
                     cutoff_index += 1
                 else:
