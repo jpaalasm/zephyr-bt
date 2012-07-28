@@ -7,17 +7,17 @@ import zephyr
 
 class EventStream:
     def __init__(self):
-        self.deque = collections.deque()
+        self.events = []
         self.events_cleaned_up = 0
         self.lock = threading.RLock()
     
     def __iter__(self):
         with self.lock:
-            return iter(list(self.deque))
+            return iter(self.events[:])
     
     def __len__(self):
         with self.lock:
-            corrected_length = len(self.deque) + self.events_cleaned_up
+            corrected_length = len(self.events) + self.events_cleaned_up
             return corrected_length
     
     def __getitem__(self, index):
@@ -26,22 +26,25 @@ class EventStream:
             assert index >= self.events_cleaned_up
             
             corrected_index = index - self.events_cleaned_up
-            return self.deque[corrected_index]
+            return self.events[corrected_index]
     
     def append(self, value):
         with self.lock:
-            self.deque.append(value)
+            self.events.append(value)
     
     def clean_up_events_before(self, timestamp_lower_bound):
         with self.lock:
-            while len(self.deque):
-                first_timestamp = self.deque[0][0]
-                
-                if first_timestamp >= timestamp_lower_bound:
+            cutoff_index = 0
+            
+            for event_timestamp, event_value in self.events:
+                if event_timestamp < timestamp_lower_bound:
+                    cutoff_index += 1
+                else:
                     break
-                
-                self.deque.popleft()
-                self.events_cleaned_up += 1
+            
+            if cutoff_index:
+                self.events = self.events[cutoff_index:]
+                self.events_cleaned_up += cutoff_index
     
     def iterate_samples(self, from_sample_index, to_end_timestamp):
         sample_index = from_sample_index
@@ -61,7 +64,7 @@ class EventStream:
 class SignalStream:
     def __init__(self, signal_packet):
         self.samplerate = signal_packet.samplerate
-        self.samples = collections.deque()
+        self.samples = []
         self.lock = threading.RLock()
         
         self.end_timestamp = None
@@ -78,8 +81,8 @@ class SignalStream:
         with self.lock:
             samples_to_remove = max(0, int((timestamp_lower_bound - self.start_timestamp) * self.samplerate))
             
-            for i in range(samples_to_remove):
-                self.samples.popleft()
+            if samples_to_remove:
+                self.samples = self.samples[samples_to_remove:]
         
         return samples_to_remove
     
