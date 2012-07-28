@@ -1,15 +1,11 @@
 
-import threading
-import collections
-import numpy
-import matplotlib.pyplot
-
 import zephyr
 from zephyr.collector import MeasurementCollector
 from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler
 from zephyr.delayed_stream import DelayedRealTimeStream
 from zephyr.message import MessagePayloadParser
-from zephyr.testing import FilePacketSimulator, test_data_dir
+from zephyr.testing import test_data_dir, TimedVirtualSerial
+from zephyr.protocol import BioHarnessProtocol
 
 
 def callback(value_name, value):
@@ -17,6 +13,9 @@ def callback(value_name, value):
 
 def main():
     zephyr.configure_root_logger()
+    
+    ser = TimedVirtualSerial(test_data_dir + "/120-second-bt-stream.dat",
+                             test_data_dir + "/120-second-bt-stream-timing.csv")
     
     collector = MeasurementCollector()
     rr_signal_analysis = BioHarnessSignalAnalysis([], [collector.handle_event])
@@ -28,13 +27,15 @@ def main():
     
     delayed_stream_thread = DelayedRealTimeStream(collector, [callback], 1.2)
     
-    simulation_thread = FilePacketSimulator(test_data_dir + "/120-second-bt-stream.dat",
-                                            test_data_dir + "/120-second-bt-stream-timing.csv",
-                                            payload_parser.handle_message)
+    protocol = BioHarnessProtocol(ser, payload_parser.handle_message)
+    protocol.enable_periodic_packets()
     
     delayed_stream_thread.start()
     
-    simulation_thread.run()
+    try:
+        protocol.run()
+    except EOFError:
+        pass
     
     delayed_stream_thread.terminate()
     delayed_stream_thread.join()

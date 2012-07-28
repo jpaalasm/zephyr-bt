@@ -3,7 +3,8 @@ import zephyr.util
 from zephyr.collector import MeasurementCollector
 from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler
 from zephyr.message import MessagePayloadParser
-from zephyr.testing import FilePacketSimulator, visualize_measurements
+from zephyr.testing import visualize_measurements, test_data_dir, VirtualSerial
+from zephyr.protocol import Protocol
 
 
 def main():
@@ -17,9 +18,14 @@ def main():
     
     payload_parser = MessagePayloadParser(signal_packet_handler.handle_packet)
     
-    simulation_thread = FilePacketSimulator("../test_data/120-second-bt-stream.dat", "../test_data/120-second-bt-stream-timing.csv", payload_parser.handle_message, False)
-    simulation_thread.start()
-    simulation_thread.join()
+    ser = VirtualSerial(test_data_dir + "/120-second-bt-stream.dat")
+    
+    protocol = Protocol(ser, payload_parser.handle_message)
+    
+    try:
+        protocol.run()
+    except EOFError:
+        pass
     
     visualize_measurements(collector)
 

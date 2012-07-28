@@ -1,58 +1,67 @@
 
-import time
-import csv
 import os
-import threading
+import csv
+import collections
 
-import zephyr.protocol
+import zephyr
 
 
 test_data_dir = os.path.join(os.path.split(os.path.split(os.path.split(__file__)[0])[0])[0], "test_data")
 
 
-class FilePacketSimulator(threading.Thread):
-    def __init__(self, stream_data_path, timing_data_path, packet_handler, sleeping=True):
-        threading.Thread.__init__(self)
-        
-        self.stream_data_path = stream_data_path
-        self.timing_data_path = timing_data_path
-        self.packet_handler = packet_handler
-        self.sleeping = sleeping
-        
-        self.terminated = False
+class VirtualSerial:
+    def __init__(self, stream_data_path):
+        self.input_file = open(stream_data_path, "rb")
     
-    def terminate(self):
-        self.terminated = True
-    
-    def run(self):
-        input_file = open(self.stream_data_path, "rb")
-        timings = list(csv.reader(open(self.timing_data_path)))
+    def read(self, byte_count):
+        read_bytes = self.input_file.read(byte_count)
+        
+        if len(read_bytes) == 0:
+            raise EOFError("End of file reached")
+        
+        return read_bytes
+
+
+class TimedVirtualSerial:
+    def __init__(self, stream_data_path, timing_data_path):
+        self.input_file = open(stream_data_path, "rb")
+        
+        timing_csv_iterator = csv.reader(open(timing_data_path))
+        self.timings = collections.deque((float(timestamp_str), int(byte_count_str))
+                                         for timestamp_str, byte_count_str
+                                         in timing_csv_iterator)
         
         start_time = zephyr.time()
-        first_timestamp = float(timings[0][0])
-        timestamp_correction = start_time - first_timestamp
+        first_timestamp = float(self.timings[0][0])
+        self.timestamp_correction = start_time - first_timestamp
+    
+    def read(self, byte_count):
+        assert byte_count == 1
+        return self.read_byte()
+    
+    def write(self, data):
+        pass
+    
+    def read_byte(self):
+        if len(self.timings) == 0:
+            raise EOFError("End of file reached")
         
-        connection = zephyr.protocol.Protocol(input_file, self.packet_handler)
+        chunk_timestamp_string, chunk_cumulative_byte_count_string = self.timings[0]
+        chunk_timestamp = float(chunk_timestamp_string) + self.timestamp_correction
+        chunk_cumulative_byte_count = int(chunk_cumulative_byte_count_string)
         
-        bytes_read = 0
+        time_to_chunk_timestamp = chunk_timestamp - zephyr.time()
         
-        for chunk_timestamp_string, chunk_cumulative_byte_count_string in timings:
-            chunk_timestamp = float(chunk_timestamp_string) + timestamp_correction
-            chunk_cumulative_byte_count = int(chunk_cumulative_byte_count_string)
-            
-            time_to_sleep = chunk_timestamp - zephyr.time()
-            
-            if self.sleeping and time_to_sleep > 0:
-                time.sleep(time_to_sleep)
-            
-            if self.terminated:
-                break
-            
-            bytes_to_read = chunk_cumulative_byte_count - bytes_read
-            for i in range(bytes_to_read):
-                connection.read_and_handle_byte()
-            
-            bytes_read = chunk_cumulative_byte_count
+        if time_to_chunk_timestamp > 0:
+            zephyr.sleep(time_to_chunk_timestamp)
+        
+        output_byte = self.input_file.read(1)
+        position = self.input_file.tell()
+        
+        if position >= chunk_cumulative_byte_count:
+            self.timings.popleft()
+        
+        return output_byte
 
 
 def visualize_measurements(signal_collector):
