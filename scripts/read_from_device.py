@@ -1,14 +1,13 @@
 
 import serial
 import platform
-import threading
 
-import zephyr.message
-import zephyr.protocol
-import zephyr.signal
-import zephyr.events
-import zephyr.delayed_stream
-import zephyr.testing
+import zephyr
+from zephyr.collector import MeasurementCollector
+from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler
+from zephyr.delayed_stream import DelayedRealTimeStream
+from zephyr.message import MessagePayloadParser
+from zephyr.protocol import BioHarnessProtocol
 
 
 def callback(value_name, value):
@@ -24,7 +23,6 @@ def main():
     serial_port = serial_port_dict[platform.system()]
     ser = serial.Serial(serial_port)
     
-    
     collector = MeasurementCollector()
     rr_signal_analysis = BioHarnessSignalAnalysis([], [collector.handle_event])
     signal_packet_handlers = [collector.handle_signal, rr_signal_analysis.handle_signal]
@@ -35,15 +33,15 @@ def main():
     
     delayed_stream_thread = DelayedRealTimeStream(collector, [callback], 1.2)
     
-    protocol = zephyr.protocol.BioHarnessProtocol(ser, payload_parser.handle_message)
+    protocol = BioHarnessProtocol(ser, payload_parser.handle_message)
     protocol.enable_periodic_packets()
     
     delayed_stream_thread.start()
     
     protocol.run()
     
-    stream_thread.terminate()
-    stream_thread.join()
+    delayed_stream_thread.terminate()
+    delayed_stream_thread.join()
 
 
 if __name__ == "__main__":
