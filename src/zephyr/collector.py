@@ -160,13 +160,7 @@ class SignalStreamHistory:
 class MeasurementCollector:
     def __init__(self, history_length_seconds=20.0):
         self._signal_stream_histories = collections.defaultdict(SignalStreamHistory)
-        self._event_streams = {}
-        
-        self.initialize_event_stream("activity")
-        self.initialize_event_stream("heart_rate")
-        self.initialize_event_stream("respiration_rate")
-        
-        self.initialize_event_stream("heartbeat_interval")
+        self._event_streams = collections.defaultdict(EventStream)
         
         self.history_length_seconds = history_length_seconds
         self.last_cleanup_time = 0.0
@@ -182,10 +176,6 @@ class MeasurementCollector:
     
     def iterate_event_streams(self):
         return self._event_streams.items()
-    
-    def initialize_event_stream(self, stream_name):
-        assert stream_name not in self._event_streams
-        self._event_streams[stream_name] = EventStream()
     
     def handle_signal(self, signal_packet, starts_new_stream):
         signal_stream_history = self._signal_stream_histories[signal_packet.type]
