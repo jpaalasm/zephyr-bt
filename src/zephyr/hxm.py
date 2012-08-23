@@ -56,5 +56,5 @@ class HxMPacketAnalysis:
             
             for event_callback in self.event_callbacks:
                 event_callback("heart_rate", (current_timestamp, packet.heart_rate))
-                event_callback("speed", (current_timestamp, packet.speed))
+                event_callback("activity", (current_timestamp, packet.speed / 3.0))
                 event_callback("strides", (current_timestamp, packet.strides))
