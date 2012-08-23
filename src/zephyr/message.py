@@ -131,14 +131,15 @@ def parse_accelerometer_samples(signal_bytes):
 
 
 class MessagePayloadParser:
-    def __init__(self, callback):
-        self.callback = callback
+    def __init__(self, callbacks):
+        self.callbacks = callbacks
     
     def handle_message(self, message_frame):
         handler = MESSAGE_TYPES.get(message_frame.message_id)
         if handler is not None:
             message = handler(message_frame.payload)
-            self.callback(message)
+            for callback in self.callbacks:
+                callback(message)
 
 
 MESSAGE_TYPES = {0x2B: parse_summary_packet,

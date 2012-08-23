@@ -23,7 +23,7 @@ def main():
     
     signal_packet_handler = BioHarnessPacketHandler(signal_packet_handlers, [collector.handle_event])
     
-    payload_parser = MessagePayloadParser(signal_packet_handler.handle_packet)
+    payload_parser = MessagePayloadParser([signal_packet_handler.handle_packet])
     
     delayed_stream_thread = DelayedRealTimeStream(collector, [callback], 1.2)
     

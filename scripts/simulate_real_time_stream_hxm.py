@@ -18,7 +18,7 @@ def main():
                              test_data_dir + "/120-second-bt-stream-hxm-timing.csv")
     
     analysis = HxMPacketAnalysis([callback])
-    hxm_handler = MessagePayloadParser(analysis.handle_packet)
+    hxm_handler = MessagePayloadParser([analysis.handle_packet])
     protocol = Protocol(ser, hxm_handler.handle_message)
     
     try:

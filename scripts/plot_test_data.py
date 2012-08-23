@@ -16,7 +16,7 @@ def main():
     
     signal_packet_handler = BioHarnessPacketHandler(signal_packet_handlers, [collector.handle_event])
     
-    payload_parser = MessagePayloadParser(signal_packet_handler.handle_packet)
+    payload_parser = MessagePayloadParser([signal_packet_handler.handle_packet])
     
     ser = VirtualSerial(test_data_dir + "/120-second-bt-stream.dat")
     

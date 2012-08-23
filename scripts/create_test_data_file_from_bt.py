@@ -25,7 +25,7 @@ def create_data_files(input_definitions):
     
     try:
         for serial_i, (serial_port, enable_channels) in enumerate(input_definitions):
-            payload_parser = zephyr.message.MessagePayloadParser(callback)
+            payload_parser = zephyr.message.MessagePayloadParser([callback])
             
             ser = serial.Serial(serial_port)
             protocol = zephyr.protocol.BioHarnessProtocol(ser, payload_parser.handle_message, "../test_data/120-second-bt-stream-%d" % serial_i)
