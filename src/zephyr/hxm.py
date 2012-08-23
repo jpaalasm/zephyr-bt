@@ -4,6 +4,10 @@ import time
 import zephyr.message
 
 
+class CalculationHistoryOverflow(Exception):
+    pass
+
+
 class HxMHelper:
     def __init__(self, packet):
         latest_heartbeat_timestamp = packet.heartbeat_timestamps[0]
@@ -28,7 +32,7 @@ class HxMHelper:
         heartbeat_increment = (packet.heartbeat_number - self.previous_heartbeat_number) % 256
         
         if heartbeat_increment > history_cache_length:
-            raise ValueError("")
+            raise CalculationHistoryOverflow("The calculation needs to be reset")
         
         new_timestamps = reversed(packet.heartbeat_timestamps[:heartbeat_increment])
         for heartbeat_timestamp, heartbeat_interval in self.fix_relative_timestamps(new_timestamps):
@@ -50,9 +54,12 @@ class HxMPacketAnalysis:
             if self.helper is None:
                 self.helper = HxMHelper(packet)
             else:
-                for timestamp, heartbeat_interval in self.helper.process(packet):
-                    for event_callback in self.event_callbacks:
-                        event_callback("heartbeat_interval", (timestamp, heartbeat_interval))
+                try:
+                    for timestamp, heartbeat_interval in self.helper.process(packet):
+                        for event_callback in self.event_callbacks:
+                            event_callback("heartbeat_interval", (timestamp, heartbeat_interval))
+                except CalculationHistoryOverflow:
+                    self.helper = HxMHelper(packet)
             
             for event_callback in self.event_callbacks:
                 event_callback("heart_rate", (current_timestamp, packet.heart_rate))
