@@ -6,6 +6,7 @@ from zephyr.delayed_stream import DelayedRealTimeStream
 from zephyr.message import MessagePayloadParser
 from zephyr.testing import test_data_dir, TimedVirtualSerial
 from zephyr.protocol import BioHarnessProtocol
+from zephyr.hxm import HxMPacketAnalysis
 
 
 def callback(value_name, value):
@@ -18,12 +19,15 @@ def main():
                              test_data_dir + "/120-second-bt-stream-timing.csv")
     
     collector = MeasurementCollector()
+    
     rr_signal_analysis = BioHarnessSignalAnalysis([], [collector.handle_event])
-    signal_packet_handlers = [collector.handle_signal, rr_signal_analysis.handle_signal]
+
+    signal_packet_handler_bh = BioHarnessPacketHandler([collector.handle_signal, rr_signal_analysis.handle_signal],
+                                                       [collector.handle_event])
+    signal_packet_handler_hxm = HxMPacketAnalysis([collector.handle_event])
     
-    signal_packet_handler = BioHarnessPacketHandler(signal_packet_handlers, [collector.handle_event])
-    
-    payload_parser = MessagePayloadParser([signal_packet_handler.handle_packet])
+    payload_parser = MessagePayloadParser([signal_packet_handler_bh.handle_packet,
+                                           signal_packet_handler_hxm.handle_packet])
     
     delayed_stream_thread = DelayedRealTimeStream(collector, [callback], 1.2)
     
