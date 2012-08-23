@@ -4,6 +4,12 @@ import csv
 import collections
 
 import zephyr
+from zephyr.collector import MeasurementCollector
+from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler
+from zephyr.delayed_stream import DelayedRealTimeStream
+from zephyr.message import MessagePayloadParser
+from zephyr.protocol import BioHarnessProtocol
+from zephyr.hxm import HxMPacketAnalysis
 
 
 test_data_dir = os.path.join(os.path.split(os.path.split(os.path.split(__file__)[0])[0])[0], "test_data")
@@ -104,3 +110,33 @@ def visualize_measurements(signal_collector):
     ax4.set_ylim((0, 1.5))
     
     pylab.show()
+
+
+def simulation_workflow(callbacks, ser):
+    zephyr.configure_root_logger()
+    
+    collector = MeasurementCollector()
+    
+    rr_signal_analysis = BioHarnessSignalAnalysis([], [collector.handle_event])
+
+    signal_packet_handler_bh = BioHarnessPacketHandler([collector.handle_signal, rr_signal_analysis.handle_signal],
+                                                       [collector.handle_event])
+    signal_packet_handler_hxm = HxMPacketAnalysis([collector.handle_event])
+    
+    payload_parser = MessagePayloadParser([signal_packet_handler_bh.handle_packet,
+                                           signal_packet_handler_hxm.handle_packet])
+    
+    delayed_stream_thread = DelayedRealTimeStream(collector, callbacks, 1.2)
+    
+    protocol = BioHarnessProtocol(ser, payload_parser.handle_message)
+    protocol.enable_periodic_packets()
+    
+    delayed_stream_thread.start()
+    
+    try:
+        protocol.run()
+    except EOFError:
+        pass
+    
+    delayed_stream_thread.terminate()
+    delayed_stream_thread.join()

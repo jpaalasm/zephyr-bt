@@ -1,12 +1,6 @@
 
 import zephyr
-from zephyr.collector import MeasurementCollector
-from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler
-from zephyr.delayed_stream import DelayedRealTimeStream
-from zephyr.message import MessagePayloadParser
-from zephyr.testing import test_data_dir, TimedVirtualSerial
-from zephyr.protocol import BioHarnessProtocol
-from zephyr.hxm import HxMPacketAnalysis
+from zephyr.testing import test_data_dir, TimedVirtualSerial, simulation_workflow
 
 
 def callback(value_name, value):
@@ -18,31 +12,7 @@ def main():
     ser = TimedVirtualSerial(test_data_dir + "/120-second-bt-stream.dat",
                              test_data_dir + "/120-second-bt-stream-timing.csv")
     
-    collector = MeasurementCollector()
-    
-    rr_signal_analysis = BioHarnessSignalAnalysis([], [collector.handle_event])
-
-    signal_packet_handler_bh = BioHarnessPacketHandler([collector.handle_signal, rr_signal_analysis.handle_signal],
-                                                       [collector.handle_event])
-    signal_packet_handler_hxm = HxMPacketAnalysis([collector.handle_event])
-    
-    payload_parser = MessagePayloadParser([signal_packet_handler_bh.handle_packet,
-                                           signal_packet_handler_hxm.handle_packet])
-    
-    delayed_stream_thread = DelayedRealTimeStream(collector, [callback], 1.2)
-    
-    protocol = BioHarnessProtocol(ser, payload_parser.handle_message)
-    protocol.enable_periodic_packets()
-    
-    delayed_stream_thread.start()
-    
-    try:
-        protocol.run()
-    except EOFError:
-        pass
-    
-    delayed_stream_thread.terminate()
-    delayed_stream_thread.join()
+    simulation_workflow([callback], ser)
 
 
 if __name__ == "__main__":
