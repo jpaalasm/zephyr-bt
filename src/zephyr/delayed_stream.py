@@ -17,6 +17,9 @@ class DelayedRealTimeStream(threading.Thread):
         
         self.terminate_requested = False
     
+    def add_callback(self, callback):
+        self.callbacks.append(callback)
+    
     def terminate(self):
         self.terminate_requested = True
     
