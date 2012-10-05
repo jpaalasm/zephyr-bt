@@ -41,6 +41,9 @@ class TimedVirtualSerial:
         first_timestamp = float(self.timings[0][0])
         self.timestamp_correction = start_time - first_timestamp
     
+    def open(self):
+        return None
+    
     def read(self, byte_count):
         assert byte_count == 1
         return self.read_byte()

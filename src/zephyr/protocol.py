@@ -33,24 +33,24 @@ class MessageDataLogger:
 
 
 class Protocol(threading.Thread):
-    def __init__(self, connection, callback, log_file_basepath=None):
+    def __init__(self, connection, callbacks):
         super(Protocol, self).__init__()
         self.connection = connection
-        self.message_parser = MessageFrameParser(callback)
+        self.callbacks = callbacks
         
+        self.initialization_messages = []
         self.terminated = False
-        
-        if log_file_basepath is not None:
-            self.message_logger = MessageDataLogger(log_file_basepath)
-        else:
-            self.message_logger = lambda x: None
     
     def terminate(self):
         self.terminated = True
     
-    def send_message(self, message_id, payload):
+    def add_initilization_message(self, message_id, payload):
         message_frame = create_message_frame(message_id, payload)
-        self.connection.write(message_frame)
+        
+        try:
+            self.connection.write(message_frame)
+        except ValueError:
+            self.initialization_messages.append(message_frame)
     
     def read_and_handle_byte(self):
         data_string = self.connection.read(1)
@@ -75,30 +75,36 @@ class Protocol(threading.Thread):
             else:
                 raise OSError("Unable to re-open")
         
-        self.message_parser.parse_data(data_string)
-        self.message_logger(data_string)
+        for callback in self.callbacks:
+            callback(data_string)
+        
         return data_string
     
     def run(self):
+        self.connection.open()
+        
+        for message_frame in self.initialization_messages:
+            self.connection.write(message_frame)
+        
         while not self.terminated:
             self.read_and_handle_byte()
 
 
 class BioHarnessProtocol(Protocol):
     def enable_ecg_waveform(self):
-        self.send_message(0x16, [1])
+        self.add_initilization_message(0x16, [1])
     
     def enable_breathing_waveform(self):
-        self.send_message(0x15, [1])
+        self.add_initilization_message(0x15, [1])
     
     def enable_rr_data(self):
-        self.send_message(0x19, [1])
+        self.add_initilization_message(0x19, [1])
     
     def enable_accelerometer_waveform(self):
-        self.send_message(0x1E, [1])
+        self.add_initilization_message(0x1E, [1])
     
     def set_summary_packet_transmit_interval_to_one_second(self):
-        self.send_message(0xBD, [1, 0])
+        self.add_initilization_message(0xBD, [1, 0])
     
     def enable_periodic_packets(self):
         self.enable_ecg_waveform()
