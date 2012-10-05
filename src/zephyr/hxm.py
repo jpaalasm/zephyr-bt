@@ -40,7 +40,7 @@ class RelativeHeartbeatTimestampAnalysis:
     
     def calculate_offset(self, timestamps):
         if len(timestamps):
-            latest_timestamp = timestamps[0]
+            latest_timestamp = timestamps[-1]
             latest_offset = zephyr.time() - latest_timestamp
             
             self.instantaneous_offset_deque.append(latest_offset)
@@ -58,16 +58,18 @@ class RelativeHeartbeatTimestampAnalysis:
         if heartbeat_increment > history_cache_length:
             raise CalculationHistoryOverflow("The calculation needs to be reset")
         
-        new_heartbeat_timestamps = reversed(packet.heartbeat_timestamps[:heartbeat_increment])
+        new_heartbeat_timestamps = packet.heartbeat_timestamps[:heartbeat_increment][::-1]
         return new_heartbeat_timestamps
     
     def process(self, packet):
-        self.calculate_offset(packet.heartbeat_timestamps)
+        new_cyclical_timestamps = self.get_new_heartbeat_timestamps(packet)
         
-        new_heartbeat_timestamps = self.get_new_heartbeat_timestamps(packet)
+        new_relative_timestamps = [self.monotonic_correction.process(timestamp)
+                                   for timestamp in new_cyclical_timestamps]
         
-        for cyclical_timestamp in new_heartbeat_timestamps:
-            relative_timestamp = self.monotonic_correction.process(cyclical_timestamp)
+        self.calculate_offset(new_relative_timestamps)
+        
+        for relative_timestamp in new_relative_timestamps:
             timestamp = relative_timestamp + self.offset
             
             if self.previous_timestamp is not None:
