@@ -1,5 +1,5 @@
 
-import time
+import collections
 
 import zephyr.message
 
@@ -8,35 +8,73 @@ class CalculationHistoryOverflow(Exception):
     pass
 
 
-class HxMHelper:
-    def __init__(self, packet):
-        latest_heartbeat_timestamp = packet.heartbeat_timestamps[0]
-        self.previous_heartbeat_number = packet.heartbeat_number
-        self.offset = zephyr.time() - latest_heartbeat_timestamp
-        self.previous_relative_timestamp = latest_heartbeat_timestamp
+class MonotonicSequenceModuloCorrection:
+    def __init__(self, modulo):
+        self.modulo = modulo
+        self.correction = 0
+        self.previous_value = None
     
-    def fix_relative_timestamps(self, timestamps):
-        for timestamp in timestamps:
-            while timestamp < self.previous_relative_timestamp:
-                timestamp += 2**16 * 0.001
-            
-            heartbeat_interval = timestamp - self.previous_relative_timestamp
-            
-            self.previous_relative_timestamp = timestamp
-            
-            yield timestamp + self.offset, heartbeat_interval
+    def process(self, value):
+        if self.previous_value is None:
+            while value + self.correction < self.previous_value:
+                self.correction += self.modulo
+        
+        self.previous_value = value + self.correction
+        
+        return self.previous_value
+
+
+def average(sequence):
+    return float(sum(sequence)) / len(sequence)
+
+
+class RelativeHeartbeatTimestampAnalysis:
+    def __init__(self):
+        self.previous_heartbeat_number = None
+        self.previous_timestamp = None
+        self.instantaneous_offset_deque = collections.deque(maxlen=30)
+        self.offset_calculation_deque = collections.deque(maxlen=5)
+        self.offset = None
+        
+        self.monotonic_correction = MonotonicSequenceModuloCorrection(2**16 * 0.001)
     
-    def process(self, packet):
+    def calculate_offset(self, timestamps):
+        if len(timestamps):
+            latest_timestamp = timestamps[0]
+            latest_offset = zephyr.time() - latest_timestamp
+            
+            self.instantaneous_offset_deque.append(latest_offset)
+            self.offset_calculation_deque.append(min(self.instantaneous_offset_deque))
+            self.offset = average(self.offset_calculation_deque)
+    
+    def get_new_heartbeat_timestamps(self, packet):
         history_cache_length = len(packet.heartbeat_timestamps)
         
-        heartbeat_increment = (packet.heartbeat_number - self.previous_heartbeat_number) % 256
+        if self.previous_heartbeat_number is not None:
+            heartbeat_increment = (packet.heartbeat_number - self.previous_heartbeat_number) % 256
+        else:
+            heartbeat_increment = 1
         
         if heartbeat_increment > history_cache_length:
             raise CalculationHistoryOverflow("The calculation needs to be reset")
         
-        new_timestamps = reversed(packet.heartbeat_timestamps[:heartbeat_increment])
-        for heartbeat_timestamp, heartbeat_interval in self.fix_relative_timestamps(new_timestamps):
-            yield heartbeat_timestamp, heartbeat_interval
+        new_heartbeat_timestamps = reversed(packet.heartbeat_timestamps[:heartbeat_increment])
+        return new_heartbeat_timestamps
+    
+    def process(self, packet):
+        self.calculate_offset(packet.heartbeat_timestamps)
+        
+        new_heartbeat_timestamps = self.get_new_heartbeat_timestamps(packet)
+        
+        for cyclical_timestamp in new_heartbeat_timestamps:
+            relative_timestamp = self.monotonic_correction.process(cyclical_timestamp)
+            timestamp = relative_timestamp + self.offset
+            
+            if self.previous_timestamp is not None:
+                heartbeat_interval = timestamp - self.previous_timestamp
+                yield timestamp, heartbeat_interval
+            
+            self.previous_timestamp = timestamp
         
         self.previous_heartbeat_number = packet.heartbeat_number
 
@@ -44,22 +82,21 @@ class HxMHelper:
 class HxMPacketAnalysis:
     def __init__(self, event_callbacks):
         self.event_callbacks = event_callbacks
-        
-        self.helper = None
+        self.heartbeat_analysis = RelativeHeartbeatTimestampAnalysis()
     
     def handle_packet(self, packet):
         if isinstance(packet, zephyr.message.HxMMessage):
             current_timestamp = zephyr.time()
             
-            if self.helper is None:
-                self.helper = HxMHelper(packet)
-            else:
-                try:
-                    for timestamp, heartbeat_interval in self.helper.process(packet):
-                        for event_callback in self.event_callbacks:
-                            event_callback("heartbeat_interval", (timestamp, heartbeat_interval))
-                except CalculationHistoryOverflow:
-                    self.helper = HxMHelper(packet)
+            try:
+                result_iterator = self.heartbeat_analysis.process(packet)
+            except CalculationHistoryOverflow:
+                self.heartbeat_analysis = RelativeHeartbeatTimestampAnalysis()
+                result_iterator = self.heartbeat_analysis.process(packet)
+            
+            for timestamp, heartbeat_interval in result_iterator:
+                for event_callback in self.event_callbacks:
+                    event_callback("heartbeat_interval", (timestamp, heartbeat_interval))
             
             for event_callback in self.event_callbacks:
                 event_callback("heart_rate", (current_timestamp, packet.heart_rate))
