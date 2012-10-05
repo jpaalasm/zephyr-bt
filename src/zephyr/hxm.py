@@ -36,7 +36,7 @@ class RelativeHeartbeatTimestampAnalysis:
         self.offset_calculation_deque = collections.deque(maxlen=5)
         self.offset = None
         
-        self.monotonic_correction = MonotonicSequenceModuloCorrection(2**16 * 0.001)
+        self.monotonic_correction = MonotonicSequenceModuloCorrection(2**16)
     
     def calculate_offset(self, timestamps):
         if len(timestamps):
@@ -48,7 +48,7 @@ class RelativeHeartbeatTimestampAnalysis:
             self.offset = average(self.offset_calculation_deque)
     
     def get_new_heartbeat_timestamps(self, packet):
-        history_cache_length = len(packet.heartbeat_timestamps)
+        history_cache_length = len(packet.heartbeat_milliseconds)
         
         if self.previous_heartbeat_number is not None:
             heartbeat_increment = (packet.heartbeat_number - self.previous_heartbeat_number) % 256
@@ -58,14 +58,14 @@ class RelativeHeartbeatTimestampAnalysis:
         if heartbeat_increment > history_cache_length:
             raise CalculationHistoryOverflow("The calculation needs to be reset")
         
-        new_heartbeat_timestamps = packet.heartbeat_timestamps[:heartbeat_increment][::-1]
+        new_heartbeat_timestamps = packet.heartbeat_milliseconds[:heartbeat_increment][::-1]
         return new_heartbeat_timestamps
     
     def process(self, packet):
-        new_cyclical_timestamps = self.get_new_heartbeat_timestamps(packet)
+        new_cyclical_millisecond_timestamps = self.get_new_heartbeat_timestamps(packet)
         
-        new_relative_timestamps = [self.monotonic_correction.process(timestamp)
-                                   for timestamp in new_cyclical_timestamps]
+        new_relative_timestamps = [self.monotonic_correction.process(timestamp) / 1000.0
+                                   for timestamp in new_cyclical_millisecond_timestamps]
         
         self.calculate_offset(new_relative_timestamps)
         

@@ -5,7 +5,7 @@ import zephyr.util
 
 
 HxMMessage = collections.namedtuple("HxMMessage",
-                                    ["heart_rate", "heartbeat_number", "heartbeat_timestamps",
+                                    ["heart_rate", "heartbeat_number", "heartbeat_milliseconds",
                                      "distance", "speed", "strides"])
 
 SummaryMessage = collections.namedtuple("SummaryMessage",
@@ -55,10 +55,10 @@ def parse_hxm_message(payload):
     distance = distance / 16.0
     speed = speed / 256.0
     
-    heartbeat_timestamps = [t / 1000.0 for t in zephyr.util.parse_uint16_values_from_bytes(heartbeat_timestamp_bytes)]
+    heartbeat_milliseconds = list(zephyr.util.parse_uint16_values_from_bytes(heartbeat_timestamp_bytes))
     
     hxm_message = HxMMessage(heart_rate=heart_rate, heartbeat_number=heartbeat_number,
-                             heartbeat_timestamps=heartbeat_timestamps, distance=distance,
+                             heartbeat_milliseconds=heartbeat_milliseconds, distance=distance,
                              speed=speed, strides=strides)
     return hxm_message
 
