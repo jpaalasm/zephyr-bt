@@ -91,12 +91,12 @@ class HxMPacketAnalysis:
             current_timestamp = zephyr.time()
             
             try:
-                result_iterator = self.heartbeat_analysis.process(packet)
+                results = list(self.heartbeat_analysis.process(packet))
             except CalculationHistoryOverflow:
                 self.heartbeat_analysis = RelativeHeartbeatTimestampAnalysis()
-                result_iterator = self.heartbeat_analysis.process(packet)
+                results = list(self.heartbeat_analysis.process(packet))
             
-            for timestamp, heartbeat_interval in result_iterator:
+            for timestamp, heartbeat_interval in results:
                 for event_callback in self.event_callbacks:
                     event_callback("heartbeat_interval", (timestamp, heartbeat_interval))
             
