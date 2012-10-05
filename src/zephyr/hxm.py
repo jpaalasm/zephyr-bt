@@ -15,7 +15,7 @@ class MonotonicSequenceModuloCorrection:
         self.previous_value = None
     
     def process(self, value):
-        if self.previous_value is None:
+        if self.previous_value is not None:
             while value + self.correction < self.previous_value:
                 self.correction += self.modulo
         
