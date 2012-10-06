@@ -63,6 +63,9 @@ class Protocol(threading.Thread):
             
             retries = 100
             for retry_i in range(retries):
+                if self.terminated:
+                    break
+                
                 try:
                     self.connection.open()
                 except Exception as e:
