@@ -19,6 +19,9 @@ class VirtualSerial:
     def __init__(self, stream_data_path):
         self.input_file = open(stream_data_path, "rb")
     
+    def open(self):
+        return None
+    
     def read(self, byte_count):
         read_bytes = self.input_file.read(byte_count)
         
