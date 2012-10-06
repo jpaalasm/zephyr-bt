@@ -4,7 +4,7 @@ from zephyr.collector import MeasurementCollector
 from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler
 from zephyr.message import MessagePayloadParser
 from zephyr.testing import visualize_measurements, test_data_dir, VirtualSerial
-from zephyr.protocol import Protocol
+from zephyr.protocol import Protocol, MessageFrameParser
 
 
 def main():
@@ -18,9 +18,11 @@ def main():
     
     payload_parser = MessagePayloadParser([signal_packet_handler.handle_packet])
     
+    message_parser = MessageFrameParser(payload_parser.handle_message)
+    
     ser = VirtualSerial(test_data_dir + "/120-second-bt-stream.dat")
     
-    protocol = Protocol(ser, payload_parser.handle_message)
+    protocol = Protocol(ser, [message_parser.parse_data])
     
     try:
         protocol.run()
