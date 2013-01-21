@@ -8,7 +8,7 @@ from zephyr.collector import MeasurementCollector
 from zephyr.bioharness import BioHarnessSignalAnalysis, BioHarnessPacketHandler
 from zephyr.delayed_stream import DelayedRealTimeStream
 from zephyr.message import MessagePayloadParser
-from zephyr.protocol import BioHarnessProtocol
+from zephyr.protocol import BioHarnessProtocol, MessageFrameParser
 from zephyr.hxm import HxMPacketAnalysis
 
 
@@ -132,9 +132,11 @@ def simulation_workflow(callbacks, ser):
     payload_parser = MessagePayloadParser([signal_packet_handler_bh.handle_packet,
                                            signal_packet_handler_hxm.handle_packet])
     
+    message_parser = MessageFrameParser(payload_parser.handle_message)
+    
     delayed_stream_thread = DelayedRealTimeStream(collector, callbacks, 1.2)
     
-    protocol = BioHarnessProtocol(ser, payload_parser.handle_message)
+    protocol = BioHarnessProtocol(ser, [message_parser.parse_data])
     protocol.enable_periodic_packets()
     
     delayed_stream_thread.start()
