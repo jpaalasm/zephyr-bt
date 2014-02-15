@@ -90,12 +90,12 @@ class SignalStream:
     def start_timestamp(self):
         return self.end_timestamp - len(self.samples) / float(self.samplerate)
     
-    def iterate_timed_samples(self):
+    def iterate_timed_samples(self, skip_samples=0):
         with self.lock:
             start_timestamp = self.start_timestamp
             sample_period = 1.0 / self.samplerate
             
-            for sample_i, sample in enumerate(self.samples):
+            for sample_i, sample in enumerate(self.samples[skip_samples:], start=skip_samples):
                 sample_timestamp = start_timestamp + sample_i * sample_period
                 yield sample_timestamp, sample
 
@@ -144,12 +144,10 @@ class SignalStreamHistory:
             next_signal_stream_start_index = signal_stream_start_index + sample_count
             
             if from_sample_index < next_signal_stream_start_index:
-                for local_sample_index, (sample_timestamp, sample) in enumerate(signal_stream.iterate_timed_samples()):
-                    global_sample_index = signal_stream_start_index + local_sample_index
-                    
-                    if global_sample_index < from_sample_index:
-                        continue
-                    elif sample_timestamp > to_end_timestamp:
+                samples_to_skip = max(0, from_sample_index - signal_stream_start_index)
+                
+                for sample_timestamp, sample in signal_stream.iterate_timed_samples(samples_to_skip):
+                    if sample_timestamp > to_end_timestamp:
                         break
                     
                     yield sample
