@@ -84,8 +84,6 @@ class Protocol(threading.Thread):
         return data_string
     
     def run(self):
-        self.connection.open()
-        
         for message_frame in self.initialization_messages:
             self.connection.write(message_frame)
         
