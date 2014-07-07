@@ -1,5 +1,4 @@
 
-import os
 import csv
 import collections
 
@@ -10,10 +9,6 @@ from zephyr.delayed_stream import DelayedRealTimeStream
 from zephyr.message import MessagePayloadParser
 from zephyr.protocol import BioHarnessProtocol, MessageFrameParser
 from zephyr.hxm import HxMPacketAnalysis
-
-
-test_data_dir = os.path.join(os.path.split(os.path.split(os.path.split(__file__)[0])[0])[0], "test_data")
-
 
 class VirtualSerial:
     def __init__(self, stream_data_path):
