@@ -31,9 +31,10 @@ class BioHarnessSignalAnalysis:
 
 
 class BioHarnessPacketHandler:
-    def __init__(self, signal_callbacks, event_callbacks):
+    def __init__(self, signal_callbacks, event_callbacks, sequence_number_wraparound=256):
         self.signal_callbacks = signal_callbacks
         self.event_callbacks = event_callbacks
+        self.sequence_number_wraparound = sequence_number_wraparound
         
         self.sequence_numbers = {}
         self.clock_difference_correction = zephyr.util.ClockDifferenceEstimator()
@@ -45,7 +46,7 @@ class BioHarnessPacketHandler:
     def get_expected_sequence_number(self, packet_type):
         previous_sequence_number = self.sequence_numbers.get(packet_type)
         if previous_sequence_number is not None:
-            expected_sequence_number = (previous_sequence_number + 1) % 256
+            expected_sequence_number = (previous_sequence_number + 1) % self.sequence_number_wraparound
         else:
             expected_sequence_number = None
         
