@@ -50,8 +50,14 @@ class EventStream:
         sample_index = from_sample_index
         
         while True:
-            if len(self) > sample_index:
-                event_timestamp, event_value = self[sample_index]
+            with self.lock:
+                if self.events_cleaned_up > sample_index:
+                    break
+                
+                last_item = self[sample_index] if len(self) > sample_index else None
+            
+            if last_item is not None:
+                event_timestamp, event_value = last_item
                 
                 if event_timestamp <= to_end_timestamp:
                     yield event_value
